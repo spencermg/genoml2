@@ -94,7 +94,7 @@ class Train:
         # Drop those that have an accuracy less than 50%, balanced accuracy less than 50%, delta between sensitivity
         # and specificity greater than 0.85, sensitivity equal to 0 or 1, or specificity equal to 0 or 1.
         filtered_table = self._log_table[
-            (self._log_table['AUC'] > 50)
+            (self._log_table['AUC'] > 0.5)
             & (self._log_table['Balanced_Accuracy'] > 50)
             & (self._log_table['Sensitivity'].sub(self._log_table['Specificity'], axis=0).abs() < 0.85)
             & (self._log_table['Sensitivity'] != 0.0)
