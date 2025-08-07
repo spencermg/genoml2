@@ -117,7 +117,7 @@ class Train:
             self._metric_max, 
             self._algorithms,
         )
-        self._y_pred = self._best_algorithm.predict_proba(self._x_valid)
+        self._y_pred_prob = self._best_algorithm.predict_proba(self._x_valid)
         self._best_algorithm_name = self._best_algorithm.__class__.__name__
         with open(self._run_prefix.parent.joinpath("algorithm.txt"), "w") as file:
             file.write(self._best_algorithm_name)
@@ -136,7 +136,7 @@ class Train:
         discrete_utils.plot_results(
             self._run_prefix,
             self._y_valid,
-            self._y_pred,
+            self._y_pred_prob,
             self._best_algorithm_name,
         )
 
@@ -146,7 +146,7 @@ class Train:
         discrete_utils.export_prediction_data(
             self._run_prefix,
             self._y_valid,
-            self._y_pred,
+            self._y_pred_prob,
             self._ids_valid,
             y_train = self._y_train,
             y_train_pred = self._best_algorithm.predict_proba(self._x_train),

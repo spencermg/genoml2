@@ -117,7 +117,7 @@ class Tune:
             self._algorithm_tuned, 
             self._algorithm, 
         ))
-        self._y_pred = self._algorithm.predict_proba(self._x_tune)
+        self._y_pred_prob = self._algorithm.predict_proba(self._x_tune)
         self._algorithm_name = self._algorithm.__class__.__name__
 
 
@@ -126,7 +126,7 @@ class Tune:
         discrete_utils.plot_results(
             self._run_prefix,
             self._y_tune,
-            self._y_pred,
+            self._y_pred_prob,
             self._algorithm_name,
         )
 
@@ -136,6 +136,6 @@ class Tune:
         discrete_utils.export_prediction_data(
             self._run_prefix,
             self._y_tune,
-            self._y_pred,
+            self._y_pred_prob,
             self._ids_tune,
         )

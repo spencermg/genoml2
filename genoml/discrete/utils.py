@@ -24,41 +24,40 @@ import xgboost
 
 
 ### TODO: Inputs should be numpy instead of pandas?
-def plot_results(out_dir, y, y_pred, algorithm_name):
+def plot_results(out_dir, y, y_pred_prob, algorithm_name):
     """
     Generate ROC and precision-recall plots for each class.
 
     Args:
         out_dir (pathlib.Path): Directory where results are saved.
         y (pandas.Series): Ground truth phenotypes.
-        y_pred (numpy.ndarray): Predicted phenotypes.
+        y_pred_prob (numpy.ndarray): Predicted phenotype probabilities.
         algorithm_name: Classifier model in OneVsRestClassifier wrapper.
     """
     
-    y_pred_prob = y_pred[:,1]
-    y_pred = y_pred.argmax(axis=1)
+    y_pred_prob = y_pred_prob[:,1]
     roc_path = out_dir.joinpath('roc.png')
     precision_recall_path = out_dir.joinpath('precision_recall.png')
     ROC(roc_path, y.values, y_pred_prob, algorithm_name)
-    precision_recall_plot(precision_recall_path, y.values, y_pred, algorithm_name)
+    precision_recall_plot(precision_recall_path, y.values, y_pred_prob, algorithm_name)
 
 
-def ROC(plot_path, y, y_pred, algorithm_name):
+def ROC(plot_path, y, y_pred_prob, algorithm_name):
     """
     Generate ROC plots for each class given ground-truth values and corresponding predictions.
 
     Args:
         plot_path (str): File path where plot will be saved to.
         y (numpy.ndarray): Ground truth phenotypes.
-        y_pred (numpy.ndarray): Predicted probabilities for each class.
+        y_pred_prob (numpy.ndarray): Predicted case probabilities.
         algorithm_name (str): Label to add to plot title.
     """
 
     plt.figure()
     plt.plot([0, 1], [0, 1], 'r--')
 
-    fpr, tpr, _ = metrics.roc_curve(y, y_pred)
-    roc_auc = metrics.roc_auc_score(y, y_pred)
+    fpr, tpr, _ = metrics.roc_curve(y, y_pred_prob)
+    roc_auc = metrics.roc_auc_score(y, y_pred_prob)
     plt.plot(fpr, tpr, color='purple', label=f'ROC curve (area = {roc_auc:.3f})')
 
     plt.xlim([0.0, 1.05])
@@ -72,20 +71,20 @@ def ROC(plot_path, y, y_pred, algorithm_name):
           f"in the withheld test data for the best performing algorithm.")
 
 
-def precision_recall_plot(plot_path, y, y_pred, algorithm_name):
+def precision_recall_plot(plot_path, y, y_pred_prob, algorithm_name):
     """
     Generate precision-recall plots for each class given ground-truth values and corresponding predictions.
 
     Args:
         plot_path (str): File path where plot will be saved to.
         y (numpy.ndarray): Ground truth phenotypes.
-        y_pred (numpy.ndarray): Predicted probabilities for each class.
+        y_pred_prob (numpy.ndarray): Predicted case probabilities.
         algorithm_name (str): Label to add to plot title.
     """
 
     plt.figure()
 
-    precision, recall, _ = metrics.precision_recall_curve(y, y_pred)
+    precision, recall, _ = metrics.precision_recall_curve(y, y_pred_prob)
     plt.plot(precision, recall, label="Precision-Recall curve")
 
     plt.xlim([0.0, 1.05])
@@ -100,14 +99,14 @@ def precision_recall_plot(plot_path, y, y_pred, algorithm_name):
           f"the best performing algorithm.")
 
 
-def export_prediction_data(out_dir, y, y_pred, ids, y_train=None, y_train_pred=None, ids_train=None):
+def export_prediction_data(out_dir, y, y_pred_prob, ids, y_train=None, y_train_pred=None, ids_train=None):
     """
     Save probability histograms and tables with accuracy metrics.
 
     Args:
         out_dir (pathlib.Path): Directory where results are saved.
         y (pandas.DataFrame): Ground truth phenotypes.
-        y_pred (pandas.DataFrame): Predicted probabilities for each class.
+        y_pred_prob (pandas.DataFrame): Predicted probabilities for each class.
         ids (pandas.Series): ids for participants corresponding to the datasets.
         y_train (optional, pandas.DataFrame): Ground truth phenotypes from the training dataset (Default: None).
         y_train_pred (optional, pandas.DataFrame): Predicted phenotypes from the training dataset (Default: None).
@@ -125,7 +124,7 @@ def export_prediction_data(out_dir, y, y_pred, ids, y_train=None, y_train_pred=N
 
     df_prediction = export_prediction_tables(
         y,
-        y_pred,
+        y_pred_prob,
         ids,
         out_dir.joinpath('predictions.txt'),
     )
@@ -150,25 +149,29 @@ def calculate_accuracy_scores(x, y, algorithm):
     """
 
     y_pred = algorithm.predict(x)
-    return _calculate_accuracy_scores(y, y_pred)
+    y_pred_prob = algorithm.predict_proba(x)
+    return _calculate_accuracy_scores(y, y_pred, y_pred_prob)
 
 
-def _calculate_accuracy_scores(y, y_pred):
+def _calculate_accuracy_scores(y, y_pred, y_pred_prob):
     """
     Calculate accuracy metrics for the chosen discrete prediction model.
 
     Args:
         y (pandas.DataFrame): Reported output features.
         y_pred (pandas.DataFrame): Predicted output features.
+        y_pred_prob (pandas.DataFrame): Predicted case probabilities.
 
     :return: accuracy_metrics *(list)*: \n
         Accuracy metrics used for the discrete prediction module.
     """
 
-    rocauc = metrics.roc_auc_score(y, y_pred)
+    y_pred_prob = y_pred_prob[:,1]
+
+    rocauc = metrics.roc_auc_score(y, y_pred_prob)
     acc = metrics.accuracy_score(y, y_pred) * 100
     balacc = metrics.balanced_accuracy_score(y, y_pred) * 100
-    ll = metrics.log_loss(y, y_pred)
+    ll = metrics.log_loss(y, y_pred_prob)
     
     CM = metrics.confusion_matrix(y, y_pred)
     TN = CM[0][0]
