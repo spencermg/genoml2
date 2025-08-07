@@ -14,3 +14,5 @@
 # ==============================================================================
 
 from genoml import continuous, discrete, misc, multiclass, preprocessing
+
+__version__ = "1.5.4"
