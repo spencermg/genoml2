@@ -46,9 +46,9 @@ class Tune:
 
         ### TODO: Can "metric_tune" be anything other than the two listed options?
         if metric_tune == "AUC":
-            self._scoring_metric = metrics.make_scorer(metrics.roc_auc_score, needs_proba=True)
+            self._scoring_metric = metrics.make_scorer(metrics.roc_auc_score, response_method="predict_proba")
         elif metric_tune == "Balanced_Accuracy":
-            self._scoring_metric = metrics.make_scorer(metrics.balanced_accuracy_score, needs_proba=False)
+            self._scoring_metric = metrics.make_scorer(metrics.balanced_accuracy_score)
 
         self._run_prefix = Path(run_prefix).joinpath("Tune")
         if not self._run_prefix.is_dir():

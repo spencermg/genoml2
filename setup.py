@@ -14,6 +14,7 @@
 # ==============================================================================
 
 import setuptools
+#from genoml import __version__
 
 with open('requirements.txt') as file:
     requires = [line.strip() for line in file if not line.startswith('#')]
@@ -44,6 +45,7 @@ setuptools.setup(
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.9,<3.13',
+    #python_requires='>=3.9,<3.13',
+    python_requires='>=3.9',
     package_data={'genoml': ['misc/*']},
 )

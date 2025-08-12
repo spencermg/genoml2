@@ -20,7 +20,6 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-from . import __version__
 from genoml import utils, dependencies
 import genoml.discrete.supervised.main as discrete_supervised
 import genoml.multiclass.supervised.main as multiclass_supervised
@@ -33,7 +32,7 @@ import genoml.preprocessing.main as preprocessing
 
 
 def handle_main():
-    print(f"Running GenoML version {__version__}")
+    print(f"Running GenoML version 1.5.4")
     entry_points = [
         {"name": "continuous", "handler": handle_continuous,
         "description": "for processing continuous datatypes (ex: age at onset)"},

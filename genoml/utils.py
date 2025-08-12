@@ -13,20 +13,21 @@
 # limitations under the License.
 # ==============================================================================
 
+import joblib
 import json
 import os
 import time
 import traceback
+import pandas as pd
 import sys
+import textwrap
 from sklearn import model_selection
 from pathlib import Path
-import pandas as pd
-import joblib
 from scipy import stats
+from skopt import BayesSearchCV
+from skopt.space import Real, Integer, Categorical
 
 __author__ = 'Sayed Hadi Hashemi'
-
-import textwrap
 
 
 class ColoredBox:
@@ -281,9 +282,9 @@ def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
         Tuned model.
     """
 
-    rand_search = model_selection.RandomizedSearchCV(
+    rand_search = BayesSearchCV(
         estimator = estimator,
-        param_distributions = param_distributions,
+        search_spaces = param_distributions,
         scoring = scoring,
         n_iter = n_iter,
         cv = cv,
@@ -292,9 +293,21 @@ def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
         verbose = 0,
     )
 
+
+    # rand_search = model_selection.RandomizedSearchCV(
+    #     estimator = estimator,
+    #     param_distributions = param_distributions,
+    #     scoring = scoring,
+    #     n_iter = n_iter,
+    #     cv = cv,
+    #     n_jobs = -1,
+    #     random_state = 3,
+    #     verbose = 0,
+    # )
+
     with Timer() as timer:
         rand_search.fit(x, y)
-    print(f"RandomizedSearchCV took {timer.elapsed():.2f} seconds for {n_iter:d} "
+    print(f"BayesSearchCV took {timer.elapsed():.2f} seconds for {n_iter:d} "
           "candidates parameter iterations.")
 
     cv_results = rand_search.cv_results_
@@ -550,62 +563,62 @@ def get_tuning_hyperparams(module):
     if module == "continuous":
         dict_hyperparams = {
             'AdaBoostRegressor' : {
-                "n_estimators": stats.randint(1, 1000),
+                "n_estimators": Integer(1, 1000, prior="log-uniform"),
                 "loss": ["linear", "square", "exponential"],
-                "learning_rate": [0.0001, 0.001, 0.01, 0.1, 1],
+                "learning_rate": Real(1e-4, 1, prior="log-uniform"),
             },
             'BaggingRegressor' : {
-                "n_estimators": stats.randint(1, 1000),
+                "n_estimators": Integer(1, 1000, prior="log-uniform"),
             },
             'GradientBoostingRegressor' : {
-                "n_estimators": stats.randint(1, 1000),
+                "n_estimators": Integer(1, 1000, prior="log-uniform"),
                 "loss": ["squared_error", "absolute_error", "huber", "quantile"],
-                "learning_rate": [0.0001, 0.001, 0.01, 0.1, 1],
-                "subsample": stats.uniform(0, 1),
+                "learning_rate": Real(1e-4, 1, prior="log-uniform"),
+                "subsample": Real(0, 1),
                 "criterion": ["friedman_mse", "squared_error"],
-                "min_weight_fraction_leaf": stats.uniform(0, 0.5),
-                "max_depth": stats.randint(1, 10),
+                "min_weight_fraction_leaf": Real(0, 0.5),
+                "max_depth": Integer(1, 10),
             },
             'RandomForestRegressor' : {
-                "n_estimators": stats.randint(1, 1000),
+                "n_estimators": Integer(1, 1000, prior="log-uniform"),
                 "criterion": ["squared_error", "absolute_error", "friedman_mse", "poisson"],
-                "min_weight_fraction_leaf": stats.uniform(0, 0.5),
+                "min_weight_fraction_leaf": Real(0, 0.5),
             },
             'ElasticNet' : {
-                "alpha": stats.uniform(0, 1),
-                "l1_ratio": stats.uniform(0, 1),
+                "alpha": Real(0, 1),
+                "l1_ratio": Real(0, 1),
             },
             'SGDRegressor' : {
                 "loss": ["squared_error", "huber", "epsilon_insensitive", "squared_epsilon_insensitive"],
                 "penalty": ["elasticnet"],
-                "alpha": [1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3], 
-                "l1_ratio": stats.uniform(0, 1),
+                "alpha": Real(1e-4, 1e3, prior="log-uniform"), 
+                "l1_ratio": Real(0, 1),
                 "learning_rate": ["constant", "optimal", "invscaling", "adaptive"],
             },
             'KNeighborsRegressor' : {
-                "leaf_size": stats.randint(1, 100), 
-                "n_neighbors": stats.randint(1, 10),
+                "leaf_size": Integer(1, 100, prior="log-uniform"), 
+                "n_neighbors": Integer(1, 10),
                 "weights": ["uniform", "distance"],
                 "algorithm": ["ball_tree", "kd_tree", "brute"],
-                "p": stats.uniform(1, 4),
+                "p": Real(1, 5),
             },
             'MLPRegressor' : {
                 "activation": ["identity", "logistic", "tanh", "relu"],
                 "solver": ["lbfgs", "sgd", "adam"],
-                "alpha": stats.uniform(0, 1), 
+                "alpha": Real(0, 1), 
                 "learning_rate": ['constant', 'invscaling', 'adaptive'],
                 "max_iter": [1000],
             },
             'SVR' : {
                 "kernel": ["linear", "poly", "rbf", "sigmoid"], 
                 "gamma": ["scale", "auto"],
-                "C": stats.randint(1, 10),
+                "C": Integer(1, 10),
             },
             'XGBRegressor' : {
-                "max_depth": stats.randint(1, 100), 
-                "learning_rate": stats.uniform(0, 1), 
-                "n_estimators": stats.randint(1, 100), 
-                "gamma": stats.uniform(0, 1),
+                "max_depth": Integer(1, 100, prior="log-uniform"), 
+                "learning_rate": Real(0, 1), 
+                "n_estimators": Integer(1, 1000, prior="log-uniform"), 
+                "gamma": Real(0, 1),
             },
         }
     
@@ -613,53 +626,53 @@ def get_tuning_hyperparams(module):
         dict_hyperparams = {
             'LogisticRegression' : {
                 "penalty": ["l1", "l2"],
-                "C": stats.randint(1, 10),
+                "C": Integer(1, 10),
             },
             'SGDClassifier' : {
-                'alpha': [1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3],
+                'alpha': Real(1e-4, 1e3, prior="log-uniform"),
                 'loss': ['log_loss'],
                 'penalty': ['l2'],
                 'n_jobs': [-1],
             },
             'RandomForestClassifier' : {
-                "n_estimators": stats.randint(1, 1000),
+                "n_estimators": Integer(1, 1000, prior="log-uniform"),
             },
             'AdaBoostClassifier' : {
-                "n_estimators": stats.randint(1, 1000),
+                "n_estimators": Integer(1, 1000, prior="log-uniform"),
             },
             'GradientBoostingClassifier' : {
-                "n_estimators": stats.randint(1, 1000),
+                "n_estimators": Integer(1, 1000, prior="log-uniform"),
             },
             'BaggingClassifier' : {
-                "n_estimators": stats.randint(1, 1000),
+                "n_estimators": Integer(1, 1000, prior="log-uniform"),
             },
             'SVC' : {
                 "kernel": ["linear", "poly", "rbf", "sigmoid"],
-                "C": stats.randint(1, 10),
+                "C": Integer(1, 10),
             },
             'ComplementNB' : {
-                "alpha": stats.uniform(0, 1),
+                "alpha": Real(0, 1),
             },
             'MLPClassifier' : {
-                "alpha": stats.uniform(0, 1),
+                "alpha": Real(0, 1),
                 "learning_rate": ['constant', 'invscaling', 'adaptive'],
                 "max_iter": [1000],
             },
             'XGBClassifier' : {
-                "max_depth": stats.randint(1, 100),
-                "learning_rate": stats.uniform(0, 1),
-                "n_estimators": stats.randint(1, 100),
-                "gamma": stats.uniform(0, 1),
+                "max_depth": Integer(1, 100, prior="log-uniform"),
+                "learning_rate": Real(0, 1),
+                "n_estimators": Integer(1, 1000, prior="log-uniform"),
+                "gamma": Real(0, 1),
             },
             'KNeighborsClassifier' : {
-                "leaf_size": stats.randint(1, 100),
-                "n_neighbors": stats.randint(1, 10),
+                "leaf_size": Integer(1, 100, prior="log-uniform"),
+                "n_neighbors": Integer(1, 10),
             },
             'LinearDiscriminantAnalysis' : {
-                "tol": stats.uniform(0, 1),
+                "tol": Real(0, 1),
             },
             'QuadraticDiscriminantAnalysis' : {
-                "tol": stats.uniform(0, 1),
+                "tol": Real(0, 1),
             },
         }
 
@@ -667,54 +680,224 @@ def get_tuning_hyperparams(module):
         dict_hyperparams = {
             'LogisticRegression' : {
                 "estimator__penalty": ["l1", "l2"],
-                "estimator__C": stats.randint(1, 10),
+                "estimator__C": Integer(1, 10),
             },
             'SGDClassifier' : {
-                'estimator__alpha': [1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3],
+                'estimator__alpha': Real(1e-4, 1e3, prior="log-uniform"),
                 'estimator__loss': ['log_loss'],
                 'estimator__penalty': ['l2'],
                 'n_jobs': [-1],
             },
             'RandomForestClassifier' : {
-                "estimator__n_estimators": stats.randint(1, 1000),
+                "estimator__n_estimators": Integer(1, 1000, prior="log-uniform"),
             },
             'AdaBoostClassifier' : {
-                "estimator__n_estimators": stats.randint(1, 1000),
+                "estimator__n_estimators": Integer(1, 1000, prior="log-uniform"),
             },
             'GradientBoostingClassifier' : {
-                "estimator__n_estimators": stats.randint(1, 1000),
+                "estimator__n_estimators": Integer(1, 1000, prior="log-uniform"),
             },
             'BaggingClassifier' : {
-                "estimator__n_estimators": stats.randint(1, 1000),
+                "estimator__n_estimators": Integer(1, 1000, prior="log-uniform"),
             },
             'SVC' : {
                 "estimator__kernel": ["linear", "poly", "rbf", "sigmoid"],
-                "estimator__C": stats.randint(1, 10),
+                "estimator__C": Integer(1, 10),
             },
             'ComplementNB' : {
-                "alpha": stats.uniform(0, 1),
+                "alpha": Real(0, 1),
             },
             'MLPClassifier' : {
-                "estimator__alpha": stats.uniform(0, 1),
+                "estimator__alpha": Real(0, 1),
                 "estimator__learning_rate": ['constant', 'invscaling', 'adaptive'],
                 "estimator__max_iter": [1000],
             },
             'XGBClassifier' : {
-                "estimator__max_depth": stats.randint(1, 100),
-                "estimator__learning_rate": stats.uniform(0, 1),
-                "estimator__n_estimators": stats.randint(1, 100),
-                "estimator__gamma": stats.uniform(0, 1),
+                "estimator__max_depth": Integer(1, 100, prior="log-uniform"),
+                "estimator__learning_rate": Real(0, 1),
+                "estimator__n_estimators": Integer(1, 1000, prior="log-uniform"),
+                "estimator__gamma": Real(0, 1),
             },
             'KNeighborsClassifier' : {
-                "estimator__leaf_size": stats.randint(1, 100),
-                "estimator__n_neighbors": stats.randint(1, 10),
+                "estimator__leaf_size": Integer(1, 100, prior="log-uniform"),
+                "estimator__n_neighbors": Integer(1, 10),
             },
             'LinearDiscriminantAnalysis' : {
-                "estimator__tol": stats.uniform(0, 1),
+                "estimator__tol": Real(0, 1),
             },
             'QuadraticDiscriminantAnalysis' : {
-                "estimator__tol": stats.uniform(0, 1),
+                "estimator__tol": Real(0, 1),
             },
         }
+
+    # if module == "continuous":
+    #     dict_hyperparams = {
+    #         'AdaBoostRegressor' : {
+    #             "n_estimators": stats.randint(1, 1000),
+    #             "loss": ["linear", "square", "exponential"],
+    #             "learning_rate": [0.0001, 0.001, 0.01, 0.1, 1],
+    #         },
+    #         'BaggingRegressor' : {
+    #             "n_estimators": stats.randint(1, 1000),
+    #         },
+    #         'GradientBoostingRegressor' : {
+    #             "n_estimators": stats.randint(1, 1000),
+    #             "loss": ["squared_error", "absolute_error", "huber", "quantile"],
+    #             "learning_rate": [0.0001, 0.001, 0.01, 0.1, 1],
+    #             "subsample": stats.uniform(0, 1),
+    #             "criterion": ["friedman_mse", "squared_error"],
+    #             "min_weight_fraction_leaf": stats.uniform(0, 0.5),
+    #             "max_depth": stats.randint(1, 10),
+    #         },
+    #         'RandomForestRegressor' : {
+    #             "n_estimators": stats.randint(1, 1000),
+    #             "criterion": ["squared_error", "absolute_error", "friedman_mse", "poisson"],
+    #             "min_weight_fraction_leaf": stats.uniform(0, 0.5),
+    #         },
+    #         'ElasticNet' : {
+    #             "alpha": stats.uniform(0, 1),
+    #             "l1_ratio": stats.uniform(0, 1),
+    #         },
+    #         'SGDRegressor' : {
+    #             "loss": ["squared_error", "huber", "epsilon_insensitive", "squared_epsilon_insensitive"],
+    #             "penalty": ["elasticnet"],
+    #             "alpha": [1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3], 
+    #             "l1_ratio": stats.uniform(0, 1),
+    #             "learning_rate": ["constant", "optimal", "invscaling", "adaptive"],
+    #         },
+    #         'KNeighborsRegressor' : {
+    #             "leaf_size": stats.randint(1, 100), 
+    #             "n_neighbors": stats.randint(1, 10),
+    #             "weights": ["uniform", "distance"],
+    #             "algorithm": ["ball_tree", "kd_tree", "brute"],
+    #             "p": stats.uniform(1, 4),
+    #         },
+    #         'MLPRegressor' : {
+    #             "activation": ["identity", "logistic", "tanh", "relu"],
+    #             "solver": ["lbfgs", "sgd", "adam"],
+    #             "alpha": stats.uniform(0, 1), 
+    #             "learning_rate": ['constant', 'invscaling', 'adaptive'],
+    #             "max_iter": [1000],
+    #         },
+    #         'SVR' : {
+    #             "kernel": ["linear", "poly", "rbf", "sigmoid"], 
+    #             "gamma": ["scale", "auto"],
+    #             "C": stats.randint(1, 10),
+    #         },
+    #         'XGBRegressor' : {
+    #             "max_depth": stats.randint(1, 100), 
+    #             "learning_rate": stats.uniform(0, 1), 
+    #             "n_estimators": stats.randint(1, 100), 
+    #             "gamma": stats.uniform(0, 1),
+    #         },
+    #     }
+    
+    # elif module == "discrete":
+    #     dict_hyperparams = {
+    #         'LogisticRegression' : {
+    #             "penalty": ["l1", "l2"],
+    #             "C": stats.randint(1, 10),
+    #         },
+    #         'SGDClassifier' : {
+    #             'alpha': [1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3],
+    #             'loss': ['log_loss'],
+    #             'penalty': ['l2'],
+    #             'n_jobs': [-1],
+    #         },
+    #         'RandomForestClassifier' : {
+    #             "n_estimators": stats.randint(1, 1000),
+    #         },
+    #         'AdaBoostClassifier' : {
+    #             "n_estimators": stats.randint(1, 1000),
+    #         },
+    #         'GradientBoostingClassifier' : {
+    #             "n_estimators": stats.randint(1, 1000),
+    #         },
+    #         'BaggingClassifier' : {
+    #             "n_estimators": stats.randint(1, 1000),
+    #         },
+    #         'SVC' : {
+    #             "kernel": ["linear", "poly", "rbf", "sigmoid"],
+    #             "C": stats.randint(1, 10),
+    #         },
+    #         'ComplementNB' : {
+    #             "alpha": stats.uniform(0, 1),
+    #         },
+    #         'MLPClassifier' : {
+    #             "alpha": stats.uniform(0, 1),
+    #             "learning_rate": ['constant', 'invscaling', 'adaptive'],
+    #             "max_iter": [1000],
+    #         },
+    #         'XGBClassifier' : {
+    #             "max_depth": stats.randint(1, 100),
+    #             "learning_rate": stats.uniform(0, 1),
+    #             "n_estimators": stats.randint(1, 100),
+    #             "gamma": stats.uniform(0, 1),
+    #         },
+    #         'KNeighborsClassifier' : {
+    #             "leaf_size": stats.randint(1, 100),
+    #             "n_neighbors": stats.randint(1, 10),
+    #         },
+    #         'LinearDiscriminantAnalysis' : {
+    #             "tol": stats.uniform(0, 1),
+    #         },
+    #         'QuadraticDiscriminantAnalysis' : {
+    #             "tol": stats.uniform(0, 1),
+    #         },
+    #     }
+
+    # elif module == "multiclass":
+    #     dict_hyperparams = {
+    #         'LogisticRegression' : {
+    #             "estimator__penalty": ["l1", "l2"],
+    #             "estimator__C": stats.randint(1, 10),
+    #         },
+    #         'SGDClassifier' : {
+    #             'estimator__alpha': [1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3],
+    #             'estimator__loss': ['log_loss'],
+    #             'estimator__penalty': ['l2'],
+    #             'n_jobs': [-1],
+    #         },
+    #         'RandomForestClassifier' : {
+    #             "estimator__n_estimators": stats.randint(1, 1000),
+    #         },
+    #         'AdaBoostClassifier' : {
+    #             "estimator__n_estimators": stats.randint(1, 1000),
+    #         },
+    #         'GradientBoostingClassifier' : {
+    #             "estimator__n_estimators": stats.randint(1, 1000),
+    #         },
+    #         'BaggingClassifier' : {
+    #             "estimator__n_estimators": stats.randint(1, 1000),
+    #         },
+    #         'SVC' : {
+    #             "estimator__kernel": ["linear", "poly", "rbf", "sigmoid"],
+    #             "estimator__C": stats.randint(1, 10),
+    #         },
+    #         'ComplementNB' : {
+    #             "alpha": stats.uniform(0, 1),
+    #         },
+    #         'MLPClassifier' : {
+    #             "estimator__alpha": stats.uniform(0, 1),
+    #             "estimator__learning_rate": ['constant', 'invscaling', 'adaptive'],
+    #             "estimator__max_iter": [1000],
+    #         },
+    #         'XGBClassifier' : {
+    #             "estimator__max_depth": stats.randint(1, 100),
+    #             "estimator__learning_rate": stats.uniform(0, 1),
+    #             "estimator__n_estimators": stats.randint(1, 100),
+    #             "estimator__gamma": stats.uniform(0, 1),
+    #         },
+    #         'KNeighborsClassifier' : {
+    #             "estimator__leaf_size": stats.randint(1, 100),
+    #             "estimator__n_neighbors": stats.randint(1, 10),
+    #         },
+    #         'LinearDiscriminantAnalysis' : {
+    #             "estimator__tol": stats.uniform(0, 1),
+    #         },
+    #         'QuadraticDiscriminantAnalysis' : {
+    #             "estimator__tol": stats.uniform(0, 1),
+    #         },
+    #     }
     
     return dict_hyperparams
