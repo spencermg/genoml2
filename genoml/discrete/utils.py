@@ -64,7 +64,7 @@ def ROC(plot_path, y, y_pred_prob, algorithm_name):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False positive rate')
     plt.ylabel('True positive rate')
-    plt.title(f'Receiver operating characteristic (ROC) - {algorithm_name}')
+    plt.title(f'Receiver operating characteristic (ROC) - {algorithm_name}', fontsize=10)
     plt.legend(loc="lower right")
     plt.savefig(plot_path, dpi=600)
     print(f"We are also exporting an ROC curve for you here {plot_path} this is a graphical representation of AUC "
@@ -91,7 +91,7 @@ def precision_recall_plot(plot_path, y, y_pred_prob, algorithm_name):
     plt.ylim([0.0, 1.05])
     plt.xlabel("Recall")
     plt.ylabel("Precision")
-    plt.title(f"Precision vs. Recall Curve - {algorithm_name}")
+    plt.title(f"Precision vs. Recall Curve - {algorithm_name}", fontsize=10)
     plt.legend(loc="lower left")
     plt.savefig(plot_path, dpi=600)
     print(f"We are also exporting a Precision-Recall plot for you here {plot_path}. This is a graphical "

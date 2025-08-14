@@ -537,6 +537,25 @@ def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, colu
     return log_table
 
 
+def get_algorithm_name(algorithm):
+    """
+    Get the name of a provided algorithm.
+
+    Args:
+        algorithm: Initialized algorithm.
+
+    :return: algorithm_name *(str)*: \n
+        Name of the provided algorithm.
+    """
+
+    algorithm_name = algorithm.__class__.__name__
+
+    if algorithm_name in ["AdaBoostRegressor", "AdaBoostClassifier", "BaggingRegressor", "BaggingClassifier"]:
+        algorithm_name += f"_{algorithm.estimator.__class__.__name__}"
+
+    return algorithm_name
+
+
 def get_tuning_hyperparams(module):
     """
     Get tuning hyperparameters for model tuning for the given module.
@@ -548,174 +567,204 @@ def get_tuning_hyperparams(module):
         Hyperparameters for each model.
     """
 
-    if module == "continuous":
-        dict_hyperparams = {
-            'AdaBoostRegressor' : {
-                "n_estimators": Integer(1, 1000, prior="log-uniform"),
-                "loss": ["linear", "square", "exponential"],
-                "learning_rate": Real(1e-4, 1, prior="log-uniform"),
-            },
-            'BaggingRegressor' : {
-                "n_estimators": Integer(1, 1000, prior="log-uniform"),
-            },
-            'GradientBoostingRegressor' : {
-                "n_estimators": Integer(1, 1000, prior="log-uniform"),
-                "loss": ["squared_error", "absolute_error", "huber", "quantile"],
-                "learning_rate": Real(1e-4, 1, prior="log-uniform"),
-                "subsample": Real(0, 1),
-                "criterion": ["friedman_mse", "squared_error"],
-                "min_weight_fraction_leaf": Real(0, 0.5),
-                "max_depth": Integer(1, 10),
-            },
-            'RandomForestRegressor' : {
-                "n_estimators": Integer(1, 1000, prior="log-uniform"),
-                "criterion": ["squared_error", "absolute_error", "friedman_mse", "poisson"],
-                "min_weight_fraction_leaf": Real(0, 0.5),
-            },
-            'ElasticNet' : {
-                "alpha": Real(0, 1),
-                "l1_ratio": Real(0, 1),
-            },
-            'SGDRegressor' : {
-                "loss": ["squared_error", "huber", "epsilon_insensitive", "squared_epsilon_insensitive"],
-                "penalty": ["elasticnet"],
-                "alpha": Real(1e-4, 1e3, prior="log-uniform"), 
-                "l1_ratio": Real(0, 1),
-                "learning_rate": ["constant", "optimal", "invscaling", "adaptive"],
-            },
-            'KNeighborsRegressor' : {
-                "leaf_size": Integer(1, 100, prior="log-uniform"), 
-                "n_neighbors": Integer(1, 10),
-                "weights": ["uniform", "distance"],
-                "algorithm": ["ball_tree", "kd_tree", "brute"],
-                "p": Real(1, 5),
-            },
-            'MLPRegressor' : {
-                "activation": ["identity", "logistic", "tanh", "relu"],
-                "solver": ["lbfgs", "sgd", "adam"],
-                "alpha": Real(0, 1), 
-                "learning_rate": ['constant', 'invscaling', 'adaptive'],
-                "max_iter": [1000],
-            },
-            'SVR' : {
-                "kernel": ["linear", "poly", "rbf", "sigmoid"], 
-                "gamma": ["scale", "auto"],
-                "C": Integer(1, 10),
-            },
-            'XGBRegressor' : {
-                "max_depth": Integer(1, 100, prior="log-uniform"), 
-                "learning_rate": Real(0, 1), 
-                "n_estimators": Integer(1, 1000, prior="log-uniform"), 
-                "gamma": Real(0, 1),
-            },
-        }
+    dict_hyperparams = {
+        "AdaBoostClassifier" : {
+            "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
+            "learning_rate": Real(1e-4, 1e0, prior="log-uniform"),
+            "random_state": [3],
+        },
+        "AdaBoostRegressor" : {
+            "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
+            "loss": ["linear", "square", "exponential"],
+            "learning_rate": Real(1e-4, 1e0, prior="log-uniform"),
+            "random_state": [3],
+        },
+        "BaggingClassifier" : {
+            "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
+            "max_samples": Real(0.1, 1),
+            "max_features": Real(0.1, 1),
+            "warm_start": [True, False],
+            "bootstrap": [True, False],
+            'n_jobs': [-1],
+            "random_state": [3],
+        },
+        "BaggingRegressor" : {
+            "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
+            "max_samples": Real(0.1, 1),
+            "max_features": Real(0.1, 1),
+            "warm_start": [True, False],
+            "bootstrap": [True, False],
+            'n_jobs': [-1],
+            "random_state": [3],
+        },
+        "RandomForestClassifier" : {
+            "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
+            "criterion": ["gini", "entropy", "log_loss"],
+            "max_depth": Integer(1, 10),
+            "min_weight_fraction_leaf": Real(0, 0.5),
+            "max_features": ["sqrt", "log2"],
+            "warm_start": [True, False],
+            "random_state": [3],
+        },
+        "RandomForestRegressor" : {
+            "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
+            "criterion": ["squared_error", "absolute_error", "friedman_mse", "poisson"],
+            "max_depth": Integer(1, 10),
+            "min_weight_fraction_leaf": Real(0, 0.5),
+            "max_features": ["sqrt", "log2"],
+            "warm_start": [True, False],
+            "random_state": [3],
+        },
+        "XGBRegressor" : {
+            "max_depth": Integer(1, 10), 
+            "learning_rate": Real(1e-4, 1e0, prior="log-uniform"), 
+            "n_estimators": Integer(1e1, 1e2, prior="log-uniform"), 
+            "gamma": Real(1e-4, 1e2, prior="log-uniform"),
+            "subsample": Real(0.5, 1.0),
+            "colsample_bytree": Real(0.5, 1.0),
+            "min_child_weight": Integer(1, 10),
+            "random_state": [3],
+        },
+        "GradientBoostingClassifier" : {
+            "loss": ["log_loss", "exponential"],
+            "learning_rate": Real(1e-4, 1e0, prior="log-uniform"),
+            "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
+            "subsample": Real(0.5, 1),
+            "criterion": ["friedman_mse", "squared_error"],
+            "min_samples_split": Real(0.01, 1),
+            "min_samples_leaf": Real(0.01, 1),
+            "min_weight_fraction_leaf": Real(0, 0.5),
+            "max_depth": Integer(1, 10),
+            "random_state": [3],
+            "max_features": ["sqrt", "log2"],
+        },
+        "GradientBoostingRegressor" : {
+            "loss": ["squared_error", "absolute_error", "huber", "quantile"],
+            "learning_rate": Real(1e-4, 1e0, prior="log-uniform"),
+            "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
+            "subsample": Real(0.5, 1),
+            "criterion": ["friedman_mse", "squared_error"],
+            "min_samples_split": Real(0.01, 1),
+            "min_samples_leaf": Real(0.01, 1),
+            "min_weight_fraction_leaf": Real(0, 0.5),
+            "max_depth": Integer(1, 10),
+            "random_state": [3],
+            "max_features": ["sqrt", "log2"],
+        },
+        "ComplementNB" : {
+            "estimator__alpha": Real(1e-3, 1e0, prior="log-uniform"),
+        },
+        "ElasticNet" : {
+            "estimator__alpha": Real(1e-3, 1e0, prior="log-uniform"),
+            "estimator__l1_ratio": Real(0, 1),
+            "estimator__selection": ["cyclic", "random"]
+        },
+        "KNeighborsClassifier" : {
+            "estimator__leaf_size": Integer(1e0, 1e2, prior="log-uniform"),
+            "estimator__n_neighbors": Integer(1, 10),
+            "estimator__weights": ["uniform", "distance"],
+            "estimator__algorithm": ["ball_tree", "kd_tree", "brute"],
+            "estimator__p": Integer(1, 2),
+        },
+        "KNeighborsRegressor" : {
+            "estimator__leaf_size": Integer(1e0, 1e2, prior="log-uniform"), 
+            "estimator__n_neighbors": Integer(1, 10),
+            "estimator__weights": ["uniform", "distance"],
+            "estimator__algorithm": ["ball_tree", "kd_tree", "brute"],
+            "estimator__p": Integer(1, 2),
+        },
+        "LinearDiscriminantAnalysis" : {
+            "estimator__solver": ["svd", "lsqr", "eigen"],
+            "estimator__tol": Real(1e-6, 1e-2, prior="log-uniform"),
+        },
+        "MLPClassifier" : {
+            "estimator__hidden_layer_sizes": [(50,), (100,), (200,), (50, 50,), (50, 100,), (50, 200,), (100, 50,), (100, 100,), (100, 200), (200, 50,), (200, 100,), (200, 200)],
+            "estimator__activation": ["identity", "logistic", "tanh", "relu"],
+            "estimator__solver": ["lbfgs", "sgd", "adam"],
+            "estimator__alpha": Real(1e-5, 1e0, prior="log-uniform"),
+            "estimator__learning_rate": ['constant', 'invscaling', 'adaptive'],
+            "estimator__max_iter": [1000],
+        },
+        "MLPRegressor" : {
+            "estimator__loss": ["squared_error", "poisson"],
+            "estimator__hidden_layer_sizes": [(50,), (100,), (200,), (50, 50,), (50, 100,), (50, 200,), (100, 50,), (100, 100,), (100, 200), (200, 50,), (200, 100,), (200, 200)],
+            "estimator__activation": ["identity", "logistic", "tanh", "relu"],
+            "estimator__solver": ["lbfgs", "sgd", "adam"],
+            "estimator__alpha": Real(1e-5, 1e0, prior="log-uniform"), 
+            "estimator__learning_rate": ['constant', 'invscaling', 'adaptive'],
+            "estimator__max_iter": [1000],
+        },
+        "QuadraticDiscriminantAnalysis" : {
+            "estimator__tol": Real(1e-6, 1e-2, prior="log-uniform"),
+        },
+        "SGDClassifier" : {
+            "estimator__loss": ["hinge", "log_loss", "modified_huber", "squared_hinge", "perceptron"],
+            "estimator__penalty": ["elasticnet"],
+            "estimator__alpha": Real(1e-5, 1e0, prior="log-uniform"),
+            "estimator__l1_ratio": Real(0, 1),
+            "estimator__n_jobs": [-1],
+            "estimator__learning_rate": ["constant", "optimal", "invscaling", "adaptive"],
+        },
+        "SGDRegressor" : {
+            "estimator__loss": ["squared_error", "huber", "epsilon_insensitive", "squared_epsilon_insensitive"],
+            "estimator__penalty": ["elasticnet"],
+            "estimator__alpha": Real(1e-5, 1e0, prior="log-uniform"), 
+            "estimator__l1_ratio": Real(0, 1),
+            "estimator__n_jobs": [-1],
+            "estimator__learning_rate": ["constant", "optimal", "invscaling", "adaptive"],
+        },
+        "SVC" : {
+            "estimator__C": Integer(1, 10),
+            "estimator__kernel": ["linear", "poly", "rbf", "sigmoid"],
+            "estimator__degree": Integer(1, 4),
+            "estimator__gamma": ["scale", "auto"],
+            "estimator__coef0": Real(0, 1),
+            "estimator__probability": [True],
+        },
+        "SVR" : {
+            "estimator__kernel": ["linear", "poly", "rbf", "sigmoid"], 
+            "estimator__degree": Integer(1, 4),
+            "estimator__gamma": ["scale", "auto"],
+            "estimator__coef0": Real(0, 1),
+            "estimator__C": Integer(1, 10),
+        },
+    }
     
-    elif module == "discrete":
-        dict_hyperparams = {
-            'LogisticRegression' : {
-                "penalty": ["l1", "l2"],
-                "C": Integer(1, 10),
-            },
-            'SGDClassifier' : {
-                'alpha': Real(1e-4, 1e3, prior="log-uniform"),
-                'loss': ['log_loss'],
-                'penalty': ['l2'],
-                'n_jobs': [-1],
-            },
-            'RandomForestClassifier' : {
-                "n_estimators": Integer(1, 1000, prior="log-uniform"),
-            },
-            'AdaBoostClassifier' : {
-                "n_estimators": Integer(1, 1000, prior="log-uniform"),
-            },
-            'GradientBoostingClassifier' : {
-                "n_estimators": Integer(1, 1000, prior="log-uniform"),
-            },
-            'BaggingClassifier' : {
-                "n_estimators": Integer(1, 1000, prior="log-uniform"),
-            },
-            'SVC' : {
-                "kernel": ["linear", "poly", "rbf", "sigmoid"],
-                "C": Integer(1, 10),
-            },
-            'ComplementNB' : {
-                "alpha": Real(0, 1),
-            },
-            'MLPClassifier' : {
-                "alpha": Real(0, 1),
-                "learning_rate": ['constant', 'invscaling', 'adaptive'],
-                "max_iter": [1000],
-            },
-            'XGBClassifier' : {
-                "max_depth": Integer(1, 100, prior="log-uniform"),
-                "learning_rate": Real(0, 1),
-                "n_estimators": Integer(1, 1000, prior="log-uniform"),
-                "gamma": Real(0, 1),
-            },
-            'KNeighborsClassifier' : {
-                "leaf_size": Integer(1, 100, prior="log-uniform"),
-                "n_neighbors": Integer(1, 10),
-            },
-            'LinearDiscriminantAnalysis' : {
-                "tol": Real(0, 1),
-            },
-            'QuadraticDiscriminantAnalysis' : {
-                "tol": Real(0, 1),
-            },
+    if module == "discrete":
+        dict_hyperparams["LogisticRegression"] = {
+            "penalty": ["l1", "l2"],
+            "C": Integer(1e0, 1e1),
+            "solver": ["lbfgs", "liblinear", "newton-cg", "newton-cholesky", "sag", "saga"],
+            "random_state": [3],
+        }
+        dict_hyperparams["XGBClassifier"] = {
+            "max_depth": Integer(1, 10),
+            "learning_rate": Real(1e-4, 1e0, prior="log-uniform"), 
+            "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
+            "gamma": Real(1e-4, 1e2, prior="log-uniform"),
+            "subsample": Real(0.5, 1.0),
+            "colsample_bytree": Real(0.5, 1.0),
+            "min_child_weight": Integer(1, 10),
+            "random_state": [3],
         }
 
     elif module == "multiclass":
-        dict_hyperparams = {
-            'LogisticRegression' : {
-                "estimator__penalty": ["l1", "l2"],
-                "estimator__C": Integer(1, 10),
-            },
-            'SGDClassifier' : {
-                'estimator__alpha': Real(1e-4, 1e3, prior="log-uniform"),
-                'estimator__loss': ['log_loss'],
-                'estimator__penalty': ['l2'],
-                'n_jobs': [-1],
-            },
-            'RandomForestClassifier' : {
-                "estimator__n_estimators": Integer(1, 1000, prior="log-uniform"),
-            },
-            'AdaBoostClassifier' : {
-                "estimator__n_estimators": Integer(1, 1000, prior="log-uniform"),
-            },
-            'GradientBoostingClassifier' : {
-                "estimator__n_estimators": Integer(1, 1000, prior="log-uniform"),
-            },
-            'BaggingClassifier' : {
-                "estimator__n_estimators": Integer(1, 1000, prior="log-uniform"),
-            },
-            'SVC' : {
-                "estimator__kernel": ["linear", "poly", "rbf", "sigmoid"],
-                "estimator__C": Integer(1, 10),
-            },
-            'ComplementNB' : {
-                "alpha": Real(0, 1),
-            },
-            'MLPClassifier' : {
-                "estimator__alpha": Real(0, 1),
-                "estimator__learning_rate": ['constant', 'invscaling', 'adaptive'],
-                "estimator__max_iter": [1000],
-            },
-            'XGBClassifier' : {
-                "estimator__max_depth": Integer(1, 100, prior="log-uniform"),
-                "estimator__learning_rate": Real(0, 1),
-                "estimator__n_estimators": Integer(1, 1000, prior="log-uniform"),
-                "estimator__gamma": Real(0, 1),
-            },
-            'KNeighborsClassifier' : {
-                "estimator__leaf_size": Integer(1, 100, prior="log-uniform"),
-                "estimator__n_neighbors": Integer(1, 10),
-            },
-            'LinearDiscriminantAnalysis' : {
-                "estimator__tol": Real(0, 1),
-            },
-            'QuadraticDiscriminantAnalysis' : {
-                "estimator__tol": Real(0, 1),
-            },
+        dict_hyperparams["LogisticRegression"] = {
+            "penalty": ["l1", "l2"],
+            "C": Integer(1e0, 1e1),
+            "solver": ["lbfgs", "newton-cg", "newton-cholesky", "sag", "saga"],
+            "random_state": [3],
+        }
+        dict_hyperparams["XGBClassifier"] = {
+            "max_depth": Integer(1, 10),
+            "learning_rate": Real(1e-4, 1e0, prior="log-uniform"), 
+            "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
+            "gamma": Real(1e-4, 1e2, prior="log-uniform"),
+            "subsample": Real(0.5, 1.0),
+            "colsample_bytree": Real(0.5, 1.0),
+            "min_child_weight": Integer(1, 10),
+            "objective": ["multi:softprob"],
+            "random_state": [3],
         }
     
     return dict_hyperparams

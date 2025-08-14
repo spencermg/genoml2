@@ -65,7 +65,7 @@ class Train:
         self._x_valid = x_valid.drop(columns=['ID'])
         self._y_train = y_train
         self._y_valid = y_valid
-        self._algorithms = {algorithm.__class__.__name__: algorithm for algorithm in candidate_algorithms}
+        self._algorithms = {utils.get_algorithm_name(algorithm): algorithm for algorithm in candidate_algorithms}
         self._metric_max = metric_max
         self._best_algorithm = None
         self._log_table = []
@@ -92,8 +92,9 @@ class Train:
             self._metric_max, 
             self._algorithms,
         )
+        self._best_algorithm_name = utils.get_algorithm_name(self._best_algorithm)
         with open(self._run_prefix.parent.joinpath("algorithm.txt"), "w") as file:
-            file.write(self._best_algorithm.__class__.__name__)
+            file.write(self._best_algorithm_name)
 
 
     def export_model(self):

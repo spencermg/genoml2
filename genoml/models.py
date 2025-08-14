@@ -18,34 +18,62 @@ from sklearn import discriminant_analysis, ensemble, linear_model, neighbors, ne
 import xgboost
 
 
-### TODO: Look into different estimators for AdaBoost/Bagging?
-### TODO: Weird results for: SGDClassifier, QuadraticDiscriminantAnalysis
+CONTINUOUS_BASE_ESTIMATORS_ADABOOST = [
+    linear_model.ElasticNet(),
+    neural_network.MLPRegressor(),
+    linear_model.SGDRegressor(),
+    svm.SVR(gamma='auto'),
+]
+CONTINUOUS_BASE_ESTIMATORS_BAGGING = [
+    linear_model.ElasticNet(),
+    neighbors.KNeighborsRegressor(),
+    neural_network.MLPRegressor(),
+    linear_model.SGDRegressor(),
+    svm.SVR(gamma='auto'),
+]
+DISCRETE_BASE_ESTIMATORS_ADABOOST = [
+    linear_model.LogisticRegression(),
+    neural_network.MLPClassifier(),
+    linear_model.SGDClassifier(loss='modified_huber'),
+    svm.SVC(probability=True, gamma='scale'),
+]
+DISCRETE_BASE_ESTIMATORS_BAGGING = [
+    neighbors.KNeighborsClassifier(),
+    discriminant_analysis.LinearDiscriminantAnalysis(),
+    linear_model.LogisticRegression(),
+    neural_network.MLPClassifier(),
+    discriminant_analysis.QuadraticDiscriminantAnalysis(),
+    linear_model.SGDClassifier(loss='modified_huber'),
+    svm.SVC(probability=True, gamma='scale'),
+]
+
 CANDIDATE_ALGORITHMS = {
-    "discrete_supervised": [
-        discriminant_analysis.LinearDiscriminantAnalysis(),
-        discriminant_analysis.QuadraticDiscriminantAnalysis(),
-        ensemble.AdaBoostClassifier(random_state=3),
-        ensemble.BaggingClassifier(random_state=3),
-        ensemble.GradientBoostingClassifier(random_state=3),
-        ensemble.RandomForestClassifier(n_estimators=100, random_state=3),
-        linear_model.LogisticRegression(solver='lbfgs', random_state=3),
-        linear_model.SGDClassifier(loss='modified_huber', random_state=3),
-        neighbors.KNeighborsClassifier(),
-        neural_network.MLPClassifier(random_state=3),
-        svm.SVC(probability=True, gamma='scale', random_state=3),
-        xgboost.XGBClassifier(random_state=3),
-    ],
     "continuous_supervised": [
-        ensemble.AdaBoostRegressor(random_state=3),
-        ensemble.BaggingRegressor(random_state=3),
+        ensemble.AdaBoostRegressor(estimator=estimator, random_state=3) for estimator in CONTINUOUS_BASE_ESTIMATORS_ADABOOST
+    ] + [
+        ensemble.BaggingRegressor(estimator=estimator, n_jobs=-1, random_state=3) for estimator in CONTINUOUS_BASE_ESTIMATORS_BAGGING
+    ] + [
         ensemble.GradientBoostingRegressor(random_state=3),
         ensemble.RandomForestRegressor(random_state=3),
-        linear_model.ElasticNet(random_state=3),
-        linear_model.SGDRegressor(random_state=3),
-        neighbors.KNeighborsRegressor(),
-        neural_network.MLPRegressor(random_state=3),
-        svm.SVR(gamma='auto'),
         xgboost.XGBRegressor(random_state=3),
+    ],
+    "discrete_supervised": [
+        ensemble.AdaBoostClassifier(estimator=estimator, random_state=3) for estimator in DISCRETE_BASE_ESTIMATORS_ADABOOST
+    ] + [
+        ensemble.BaggingClassifier(estimator=estimator, n_jobs=-1, random_state=3) for estimator in DISCRETE_BASE_ESTIMATORS_BAGGING
+    ] + [
+        ensemble.GradientBoostingClassifier(random_state=3),
+        ensemble.RandomForestClassifier(n_estimators=50, random_state=3),
+        xgboost.XGBClassifier(random_state=3),
+    ],
+    "multiclass_supervised": [
+        ensemble.AdaBoostClassifier(estimator=estimator, random_state=3) for estimator in DISCRETE_BASE_ESTIMATORS_ADABOOST
+    ] + [
+        ensemble.BaggingClassifier(estimator=estimator, n_jobs=-1, random_state=3) for estimator in DISCRETE_BASE_ESTIMATORS_BAGGING
+    ] + [
+        ensemble.GradientBoostingClassifier(random_state=3),
+        ensemble.RandomForestClassifier(n_estimators=50, random_state=3),
+        xgboost.XGBClassifier(objective="multi:softprob", random_state=3),
     ],
 }
 

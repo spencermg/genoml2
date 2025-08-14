@@ -24,7 +24,6 @@ import sys
 from genoml import utils
 
 
-### TODO: Add random state
 class Train:
     @utils.DescriptionLoader.function_description("info", cmd="Discrete Supervised Training")
     def __init__(self, prefix, metric_max):
@@ -43,7 +42,7 @@ class Train:
             x, 
             y, 
             test_size=0.3, 
-            random_state=42,
+            random_state=3,
         )
 
         candidate_algorithms = get_candidate_algorithms("discrete_supervised")
@@ -69,7 +68,7 @@ class Train:
         self._y_valid = y_valid
         self._ids_train = x_train.ID
         self._ids_valid = x_valid.ID
-        self._algorithms = {algorithm.__class__.__name__: algorithm for algorithm in candidate_algorithms}
+        self._algorithms = {utils.get_algorithm_name(algorithm): algorithm for algorithm in candidate_algorithms}
         self._metric_max = metric_max
         self._best_algorithm = None
         self._log_table = []
@@ -118,7 +117,7 @@ class Train:
             self._algorithms,
         )
         self._y_pred_prob = self._best_algorithm.predict_proba(self._x_valid)
-        self._best_algorithm_name = self._best_algorithm.__class__.__name__
+        self._best_algorithm_name = utils.get_algorithm_name(self._best_algorithm)
         with open(self._run_prefix.parent.joinpath("algorithm.txt"), "w") as file:
             file.write(self._best_algorithm_name)
 
