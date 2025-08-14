@@ -45,7 +45,7 @@ class Train:
             random_state=42,
         )
 
-        candidate_algorithms = [OneVsRestClassifier(algo) for algo in get_candidate_algorithms("discrete_supervised")]
+        candidate_algorithms = get_candidate_algorithms("discrete_supervised")
 
         self._column_names = [
             "Algorithm",
@@ -66,9 +66,9 @@ class Train:
         self._ids_valid = x_valid.ID
         self._x_train = x_train.drop(columns=['ID'])
         self._x_valid = x_valid.drop(columns=['ID'])
-        self._y_train = pd.get_dummies(y_train)
-        self._y_valid = pd.get_dummies(y_valid)
-        self._algorithms = {algorithm.estimator.__class__.__name__: algorithm for algorithm in candidate_algorithms}
+        self._y_train = y_train
+        self._y_valid = y_valid
+        self._algorithms = {utils.get_algorithm_name(algorithm): algorithm for algorithm in candidate_algorithms}
         self._metric_max = metric_max
         self._best_algorithm = None
         self._best_algorithm_name = None
@@ -114,7 +114,7 @@ class Train:
             self._algorithms,
         )
         self._y_pred = self._best_algorithm.predict_proba(self._x_valid)
-        self._best_algorithm_name = self._best_algorithm.estimator.__class__.__name__
+        self._best_algorithm_name = utils.get_algorithm_name(self._best_algorithm)
         with open(self._run_prefix.parent.joinpath("algorithm.txt"), "w") as file:
             file.write(self._best_algorithm_name)
     

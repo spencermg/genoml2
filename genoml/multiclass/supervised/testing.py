@@ -38,7 +38,7 @@ class Test:
         self._run_prefix = Path(prefix).joinpath("Test")
         if not self._run_prefix.is_dir():
             self._run_prefix.mkdir()
-        self._y_test = pd.get_dummies(df.PHENO)
+        self._y_test = df.PHENO
         self._ids_test = df.ID
         x_test = df.drop(columns=['ID', 'PHENO'])
         self._y_pred = algorithm.predict_proba(x_test)
@@ -60,7 +60,7 @@ class Test:
         """ Save results from best-performing algorithm. """
         multiclass_utils.export_prediction_data(
             self._run_prefix,
-            self._y_test.values.argmax(axis=1),
+            self._y_test.values,
             self._y_pred,
             self._ids_test,
             self.num_classes,

@@ -22,14 +22,14 @@ from genoml import utils
 
 
 ### TODO: Inputs should be numpy instead of pandas?
-def plot_results(out_dir, y, y_pred, algorithm_name):
+def plot_results(out_dir, y, y_pred_prob, algorithm_name):
     """
     Generate ROC and precision-recall plots for each class.
 
     Args:
         out_dir (pathlib.Path): Directory where results are saved.
         y (pandas.DataFrame): Ground truth phenotypes.
-        y_pred (pandas.DataFrame): Predicted phenotype probabilities.
+        y_pred_prob (pandas.DataFrame): Predicted phenotype probabilities.
         algorithm_name (str): Name of the algorithm used for prediction.
 
     :return: num_classes *(int)*: \n
@@ -38,20 +38,21 @@ def plot_results(out_dir, y, y_pred, algorithm_name):
 
     roc_path = out_dir.joinpath('roc.png')
     precision_recall_path = out_dir.joinpath('precision_recall.png')
-    num_classes = y_pred.shape[1]
-    ROC(roc_path, y.values, y_pred, algorithm_name, num_classes)
-    precision_recall_plot(precision_recall_path, y.values, y_pred, algorithm_name, num_classes)
+    num_classes = y_pred_prob.shape[1]
+    y_dummies = pd.get_dummies(y)
+    ROC(roc_path, y_dummies.values, y_pred_prob, algorithm_name, num_classes)
+    precision_recall_plot(precision_recall_path, y_dummies.values, y_pred_prob, algorithm_name, num_classes)
     return num_classes
 
 
-def ROC(plot_path, y, y_pred, algorithm_name, num_classes):
+def ROC(plot_path, y_dummies, y_pred_prob, algorithm_name, num_classes):
     """
     Generate ROC plots for each class given ground-truth values and corresponding predictions.
 
     Args:
         plot_path (str): File path where plot will be saved to.
-        y (numpy.ndarray): Ground truth phenotypes.
-        y_pred (numpy.ndarray): Predicted probabilities for each class.
+        y_dummies (numpy.ndarray): Ground truth phenotypes.
+        y_pred_prob (numpy.ndarray): Predicted probabilities for each class.
         algorithm_name (str): Label to add to plot title.
         num_classes (int): Number of classes being predicted.
     """
@@ -60,29 +61,29 @@ def ROC(plot_path, y, y_pred, algorithm_name, num_classes):
     plt.plot([0, 1], [0, 1], 'r--')
 
     for i in range(num_classes):
-        fpr, tpr, _ = metrics.roc_curve(y[:, i], y_pred[:, i])
-        roc_auc = metrics.roc_auc_score(y[:, i], y_pred[:, i])
+        fpr, tpr, _ = metrics.roc_curve(y_dummies[:, i], y_pred_prob[:, i])
+        roc_auc = metrics.roc_auc_score(y_dummies[:, i], y_pred_prob[:, i])
         plt.plot(fpr, tpr, label=f"Class {i + 1} (area = {roc_auc:.3f})")
 
     plt.xlim([0.0, 1.05])
     plt.ylim([0.0, 1.05])
-    plt.xlabel('False positive rate')
-    plt.ylabel('True positive rate')
-    plt.title(f'Receiver operating characteristic (ROC) - {algorithm_name}')
+    plt.xlabel("False positive rate")
+    plt.ylabel("True positive rate")
+    plt.title(f"Receiver operating characteristic (ROC) - {algorithm_name}", fontsize=10)
     plt.legend(loc="lower right")
     plt.savefig(plot_path, dpi=600)
     print(f"We are also exporting an ROC curve for you here {plot_path} this is a graphical representation of AUC "
           f"in the withheld test data for the best performing algorithm.")
 
 
-def precision_recall_plot(plot_path, y, y_pred, algorithm_name, num_classes):
+def precision_recall_plot(plot_path, y_dummies, y_pred_prob, algorithm_name, num_classes):
     """
     Generate precision-recall plots for each class given ground-truth values and corresponding predictions.
 
     Args:
         plot_path (str): File path where plot will be saved to.
-        y (numpy.ndarray): Ground truth phenotypes.
-        y_pred (numpy.ndarray): Predicted probabilities for each class.
+        y_dummies (numpy.ndarray): Ground truth phenotypes.
+        y_pred_prob (numpy.ndarray): Predicted probabilities for each class.
         algorithm_name (str): Label to add to plot title.
         num_classes (int): Number of classes being predicted.
     """
@@ -90,29 +91,29 @@ def precision_recall_plot(plot_path, y, y_pred, algorithm_name, num_classes):
     plt.figure()
 
     for i in range(num_classes):
-        precision, recall, _ = metrics.precision_recall_curve(y[:, i], y_pred[:, i])
+        precision, recall, _ = metrics.precision_recall_curve(y_dummies[:, i], y_pred_prob[:, i])
         plt.plot(precision, recall, label=f"Class {i + 1}")
 
     plt.xlim([0.0, 1.05])
     plt.ylim([0.0, 1.05])
     plt.xlabel("Recall")
     plt.ylabel("Precision")
-    plt.title(f"Precision vs. Recall Curve - {algorithm_name}")
+    plt.title(f"Precision vs. Recall Curve - {algorithm_name}", fontsize=10)
     plt.legend(loc="lower left")
     plt.savefig(plot_path, dpi=600)
     print(f"We are also exporting a Precision-Recall plot for you here {plot_path}. This is a graphical "
-            f"representation of the relationship between precision and recall scores in the withheld test data for "
-            f"the best performing algorithm.")
+          f"representation of the relationship between precision and recall scores in the withheld test data for "
+          f"the best performing algorithm.")
 
 
-def export_prediction_data(out_dir, y, y_pred, ids, num_classes, y_train=None, y_train_pred=None, ids_train=None):
+def export_prediction_data(out_dir, y, y_pred_prob, ids, num_classes, y_train=None, y_train_pred=None, ids_train=None):
     """
     Save probability histograms and tables with accuracy metrics
 
     Args:
         out_dir (pathlib.Path): Directory where results are saved.
         y (pandas.DataFrame): Ground truth phenotypes.
-        y_pred (pandas.DataFrame): Predicted probabilities for each class.
+        y_pred_prob (pandas.DataFrame): Predicted probabilities for each class.
         ids (pandas.Series): ids for participants corresponding to the datasets.
         num_classes (int): Number of classes being predicted.
         y_train (optional, pandas.DataFrame): Ground truth phenotypes from the training dataset (Default: None).
@@ -132,7 +133,7 @@ def export_prediction_data(out_dir, y, y_pred, ids, num_classes, y_train=None, y
 
     df_prediction = export_prediction_tables(
         y,
-        y_pred,
+        y_pred_prob,
         ids,
         out_dir.joinpath('predictions.txt'),
         num_classes,
@@ -145,13 +146,13 @@ def export_prediction_data(out_dir, y, y_pred, ids, num_classes, y_train=None, y
     )
 
 
-def calculate_accuracy_scores(x, y_proba, algorithm):
+def calculate_accuracy_scores(x, y, algorithm):
     """
     Calculate accuracy metrics for the chosen multiclass prediction model.
 
     Args:
         x (pandas.DataFrame): Model input features.
-        y_proba (pandas.DataFrame): Reported output features.
+        y (pandas.DataFrame): Reported output features.
         algorithm: Contonuous prediction algorithm.
 
     :return: accuracy_metrics *(list)*: \n
@@ -159,34 +160,34 @@ def calculate_accuracy_scores(x, y_proba, algorithm):
     """
 
     y_pred_proba = algorithm.predict_proba(x)
-    return _calculate_accuracy_scores(y_proba, y_pred_proba)
+    return _calculate_accuracy_scores(y, y_pred_proba)
 
 
 ### TODO: Macro vs weighted? Separate for each class using one vs all?
-def _calculate_accuracy_scores(y_proba, y_pred_proba):
+def _calculate_accuracy_scores(y, y_pred_proba):
     """
     Calculate accuracy metrics for the chosen multiclass prediction model.
 
     Args:
-        y_proba (pandas.DataFrame): Reported output features.
+        y (pandas.DataFrame): Reported output features.
         y_pred_proba (pandas.DataFrame): Predicted output features.
 
     :return: accuracy_metrics *(list)*: \n
         Accuracy metrics used for the multiclass prediction module.
     """
 
-    y_argmax = y_proba.values.argmax(axis=1)
+    y_dummies = pd.get_dummies(y)
     y_pred_argmax = y_pred_proba.argmax(axis=1)
 
-    rocauc = metrics.roc_auc_score(y_proba, y_pred_proba, multi_class="ovr")
-    acc = metrics.accuracy_score(y_argmax, y_pred_argmax) * 100
-    balacc = metrics.balanced_accuracy_score(y_argmax, y_pred_argmax) * 100
-    ll = metrics.log_loss(y_proba, y_pred_proba)
+    rocauc = metrics.roc_auc_score(y_dummies, y_pred_proba, multi_class="ovr")
+    acc = metrics.accuracy_score(y, y_pred_argmax) * 100
+    balacc = metrics.balanced_accuracy_score(y, y_pred_argmax) * 100
+    ll = metrics.log_loss(y_dummies, y_pred_proba)
     
-    n_classes = y_proba.shape[1]
+    n_classes = y_dummies.shape[1]
     sens = spec = ppv = npv = 0
     for class_ in range(n_classes):
-        y_vals_class = np.where(y_argmax == class_, 1, 0)
+        y_vals_class = np.where(y == class_, 1, 0)
         y_vals_pred_class = np.where(y_pred_argmax == class_, 1, 0)
         CM = metrics.confusion_matrix(y_vals_class, y_vals_pred_class)
         tn = CM[0][0]
@@ -202,13 +203,13 @@ def _calculate_accuracy_scores(y_proba, y_pred_proba):
     return accuracy_metrics
 
 
-def export_prediction_tables(y, y_pred, ids, output_path, num_classes, dataset="withheld test"):
+def export_prediction_tables(y, y_pred_prob, ids, output_path, num_classes, dataset="withheld test"):
     """
     Generate and save tables with prediction probabilities and predicted classes for each sample.
 
     Args:
         y (pandas.DataFrame): Ground truth phenotypes.
-        y_pred (pandas.DataFrame): Predicted phenotypes.
+        y_pred_prob (pandas.DataFrame): Predicted phenotype probabilities.
         ids (pandas.Series): ids for participants corresponding to the datasets.
         output_path (pathlib.Path): Where to save output files.
         num_classes (int): Number of classes being predicted.
@@ -218,15 +219,15 @@ def export_prediction_tables(y, y_pred, ids, output_path, num_classes, dataset="
         Table of reported and predicted phenotypes.
     """
 
-    y_pred = pd.DataFrame(y_pred)
-    df_predicted_cases = y_pred.idxmax(axis=1)
+    y_pred_prob = pd.DataFrame(y_pred_prob)
+    df_predicted_cases = y_pred_prob.idxmax(axis=1)
     y = pd.DataFrame(y).idxmax(axis=1)
     ids = pd.DataFrame(ids)
     df_prediction = pd.concat(
         [
             ids.reset_index(drop=True),
             y.reset_index(drop=True),
-            y_pred.reset_index(drop=True),
+            y_pred_prob.reset_index(drop=True),
             df_predicted_cases.reset_index(drop=True),
         ],
         axis=1,
@@ -234,7 +235,7 @@ def export_prediction_tables(y, y_pred, ids, output_path, num_classes, dataset="
     )
 
     df_prediction.columns = ["ID", "CASE_REPORTED"] \
-                            + [f"CASE{i + 1}_PROBABILITY" for i in range(num_classes)] \
+                            + [f"CASE{i}_PROBABILITY" for i in range(num_classes)] \
                             + ["CASE_PREDICTED"]
     df_prediction.to_csv(output_path, index=False, sep="\t")
 
@@ -259,7 +260,7 @@ def export_prob_hist(num_classes, df_plot, plot_prefix):
     """
 
     for i in range(num_classes):
-        df_plot[f'Probability{i + 1} (%)'] = (df_plot[f'CASE{i + 1}_PROBABILITY'] * 100).round(decimals=0)
+        df_plot[f'Probability{i + 1} (%)'] = (df_plot[f'CASE{i}_PROBABILITY'] * 100).round(decimals=0)
     df_plot['Reported Status'] = df_plot['CASE_REPORTED']
     df_plot['Predicted Status'] = df_plot['CASE_PREDICTED']
 
