@@ -39,7 +39,7 @@ class FeatureSelection:
             clf = ensemble.ExtraTreesRegressor(n_estimators=self.n_est)
         clf.fit(self.x, self.y)
         
-        # Code to drop the features below threshold and return the data set like it was (aka add PHENO and IDs back)
+        # Code to drop the features below threshold and return the dataset like it was (aka add PHENO and IDs back)
         ### TODO: Look into warning message from this
         model = feature_selection.SelectFromModel(clf, prefit=True)
         df_feature_scores = pd.DataFrame(
