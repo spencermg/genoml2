@@ -544,7 +544,8 @@ def handle_endpoints(command_name, flag_names, endpoint, level):
                             error=""):
         dependencies.check_dependencies()
 
-        ### TODO: Add check here for if the directory exists
+        if not Path(args[0]).is_dir():
+            raise FileNotFoundError(f"Directory does not exist: {Path(args[0])}. Please create this directory and try again.")
         with open(Path(args[0]).joinpath("log.txt"), "a") as f:
             f.write(datetime.now().astimezone().strftime("%A, %B %d, %Y at %I:%M:%S %p %Z") + "\n")
             f.write(" ".join(sys.argv) + "\n\n")
