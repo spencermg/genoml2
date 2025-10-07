@@ -15,22 +15,17 @@
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from scipy import stats
-import sklearn
 from sklearn import metrics
 import seaborn as sns
-import time
-import xgboost
 
 
-### TODO: Inputs should be numpy instead of pandas?
 def plot_results(out_dir, y, y_pred_prob, algorithm_name):
     """
     Generate ROC and precision-recall plots for each class.
 
     Args:
         out_dir (pathlib.Path): Directory where results are saved.
-        y (pandas.Series): Ground truth phenotypes.
+        y (numpy.ndarray): Ground truth phenotypes.
         y_pred_prob (numpy.ndarray): Predicted phenotype probabilities.
         algorithm_name: Classifier model in OneVsRestClassifier wrapper.
     """
@@ -38,8 +33,8 @@ def plot_results(out_dir, y, y_pred_prob, algorithm_name):
     y_pred_prob = y_pred_prob[:,1]
     roc_path = out_dir.joinpath('roc.png')
     precision_recall_path = out_dir.joinpath('precision_recall.png')
-    ROC(roc_path, y.values, y_pred_prob, algorithm_name)
-    precision_recall_plot(precision_recall_path, y.values, y_pred_prob, algorithm_name)
+    ROC(roc_path, y, y_pred_prob, algorithm_name)
+    precision_recall_plot(precision_recall_path, y, y_pred_prob, algorithm_name)
 
 
 def ROC(plot_path, y, y_pred_prob, algorithm_name):
@@ -161,9 +156,23 @@ def _calculate_accuracy_scores(y, y_pred, y_pred_prob):
         y (pandas.DataFrame): Reported output features.
         y_pred (pandas.DataFrame): Predicted output features.
         y_pred_prob (pandas.DataFrame): Predicted case probabilities.
-
-    :return: accuracy_metrics *(list)*: \n
-        Accuracy metrics used for the discrete prediction module.
+    
+    :return: rocauc *(float)*: \n
+        ROC AUC value.
+    :return: acc *(float)*: \n
+        Accuracy value.
+    :return: balacc *(float)*: \n
+        Balanced accuracy value.
+    :return: ll *(float)*: \n
+        Log loss value.
+    :return: sens *(float)*: \n
+        Sensitivity value.
+    :return: spec *(float)*: \n
+        Specificity value.
+    :return: ppv *(float)*: \n
+        Positive predictive value.
+    :return: npv *(float)*: \n
+        Negative predictive value.
     """
 
     y_pred_prob = y_pred_prob[:,1]
@@ -183,8 +192,7 @@ def _calculate_accuracy_scores(y, y_pred, y_pred_prob):
     ppv = TP/(TP+FP)
     npv = TN/(TN+FN)
 
-    accuracy_metrics = [rocauc, acc, balacc, ll, sens, spec, ppv, npv]
-    return accuracy_metrics
+    return rocauc, acc, balacc, ll, sens, spec, ppv, npv
 
 
 def export_prediction_tables(y, y_pred, ids, output_path, dataset="withheld test"):

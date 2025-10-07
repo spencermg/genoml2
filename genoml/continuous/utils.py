@@ -38,7 +38,7 @@ def export_prediction_data(out_dir, ids, step, y, y_predicted, y_withheld=None, 
         Table with predicted and reported phenotypes.
     """
 
-    output_columns = ["ID", f"REPORTED", f"PREDICTED"]
+    output_columns = ["ID", "REPORTED", "PREDICTED"]
 
     # Training results.
     results = pd.DataFrame(
@@ -96,47 +96,6 @@ def export_prediction_data(out_dir, ids, step, y, y_predicted, y_withheld=None, 
             f.write(fitted.summary().as_csv().replace(",", "\t"))
 
 
-def performance_metrics(out_dir, y_reported, y_predicted):
-    """
-    Evaluate and save performance metrics.
-
-    Args:
-        out_dir (pathlib.Path): Path to output directory.
-        y_reported (numpy.ndarray): Array of reported phenotypes for each sample.
-        y_predicted (numpy.ndarray): Array of predicted phenotypes for each sample.
-    """
-
-    evs = metrics.explained_variance_score(y_reported, y_predicted)
-    mse = metrics.mean_squared_error(y_reported, y_predicted)
-    mae = metrics.median_absolute_error(y_reported, y_predicted)
-    r2s = metrics.r2_score(y_reported, y_predicted)
-
-    print("")
-    print("#"*70)
-    print(f"Explained variance score: {evs:.4}")
-    print(f"Mean squared error: {mse:.4}")
-    print(f"Median absolute error: {mae:.4}")
-    print(f"R^2 score: {r2s:.4}")
-        
-    log_entry = pd.DataFrame({
-        "Explained_variance_score": [evs],
-        "Mean_squared_error": [mse], 
-        "Median_absolute_error": [mae], 
-        "R2_score": [r2s]
-    })
-
-    log_outfile = out_dir.joinpath('performance_metrics.txt')
-    log_entry.to_csv(log_outfile, index=False, sep="\t")
-
-    print("#"*70)
-    print("")
-    print(f"This table below is also logged as {log_outfile} and is in your current working directory...")
-    print("#"*70)
-    print(log_entry)
-    print("#"*70)
-    print("")
-
-
 def calculate_accuracy_scores(x, y, algorithm):
     """
     Calculate accuracy metrics for the chosen continuous prediction model.
@@ -162,8 +121,14 @@ def _calculate_accuracy_scores(y, y_pred):
         y (pandas.DataFrame): Reported output features.
         y_pred (pandas.DataFrame): Predicted output features.
 
-    :return: accuracy_metrics *(list)*: \n
-        Accuracy metrics used for the continuous prediction module.
+    :return: evs *(float)*: \n
+        Explained Variance Score.
+    :return: mse *(float)*: \n
+        Mean Squared Error.
+    :return: mae *(float)*: \n
+        Median Absolute Error.
+    :return: r2s *(float)*: \n
+        R^2 Score.
     """
 
     evs = metrics.explained_variance_score(y, y_pred)
@@ -171,5 +136,4 @@ def _calculate_accuracy_scores(y, y_pred):
     mae = metrics.median_absolute_error(y, y_pred)
     r2s = metrics.r2_score(y, y_pred)
 
-    accuracy_metrics = [evs, mse, mae, r2s]
-    return accuracy_metrics
+    return evs, mse, mae, r2s

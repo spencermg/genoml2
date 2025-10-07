@@ -13,15 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-import pandas as pd
 import genoml.multiclass.utils as multiclass_utils
 import joblib
-import numpy as np
 import sys
 from pathlib import Path
 from genoml import utils
 from sklearn import metrics
-from sklearn.multiclass import OneVsRestClassifier
 
 
 class Tune:
@@ -39,6 +36,11 @@ class Tune:
         model_path = Path(run_prefix).joinpath('model.joblib')
 
         dict_hyperparams = utils.get_tuning_hyperparams("multiclass")
+
+        # Exponential loss does not work for multiclass
+        dict_hyperparams["GradientBoostingClassifier"]["loss"] = [
+            loss for loss in dict_hyperparams["GradientBoostingClassifier"]["loss"] if loss != "exponential"
+        ]
 
         if metric_tune == "AUC":
             self._scoring_metric = metrics.make_scorer(metrics.roc_auc_score, response_method="predict_proba", multi_class="ovr")
@@ -120,7 +122,7 @@ class Tune:
             self._algorithm, 
         ))
         self._y_pred_prob = self._algorithm.predict_proba(self._x_tune)
-        self._algorithm_name = self._algorithm.estimator.__class__.__name__
+        self._algorithm_name = utils.get_algorithm_name(self._algorithm)
 
 
     def plot_results(self):

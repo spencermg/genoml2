@@ -43,17 +43,7 @@ class Test:
         x_test = df.drop(columns=['PHENO', 'ID'])
         self._y_pred = algorithm.predict(x_test)
         self._test_results = None
-        self._algorithm_name = algorithm.__class__.__name__
-
-
-    ### TODO: Use same function for training and tuning as well?
-    def performance_metrics(self):
-        """ Save performance metrics. """
-        continuous_utils.performance_metrics(
-            self._run_prefix, 
-            self._y_test, 
-            self._y_pred,
-        )
+        self._algorithm_name = utils.get_algorithm_name(algorithm)
 
 
     def export_prediction_data(self):
@@ -70,8 +60,8 @@ class Test:
     def additional_sumstats(self):
         """ Save performance metrics for testing data """
         log_table = pd.DataFrame(
-            data=[[self._algorithm_name] + continuous_utils._calculate_accuracy_scores(self._y_test, self._y_pred)], 
-            columns=["Algorithm", "Explained_Variance", "Mean_Squared_Error", "Median_Absolute_Error", "R-Squared_Error"],
+            data=[[self._algorithm_name] + list(continuous_utils._calculate_accuracy_scores(self._y_test, self._y_pred))], 
+            columns=["Algorithm", "Explained Variance", "Mean Squared Error", "Median Absolute Error", "R-Squared_Error"],
         )
         log_outfile = self._run_prefix.joinpath('performance_metrics.txt')
         log_table.to_csv(log_outfile, index=False, sep="\t")

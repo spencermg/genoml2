@@ -14,15 +14,8 @@
 # ==============================================================================
 
 import joblib
-import numpy as np
-import pandas as pd
 from pathlib import Path
-import seaborn as sns
-import sklearn
-import matplotlib.pyplot as plt
-from sklearn import discriminant_analysis, ensemble, linear_model, metrics, model_selection, neighbors, neural_network, svm
-from time import time
-import xgboost
+from sklearn import metrics
 import genoml.discrete.utils as discrete_utils
 from genoml import utils
 import sys
@@ -44,7 +37,6 @@ class Tune:
 
         dict_hyperparams = utils.get_tuning_hyperparams("discrete")
 
-        ### TODO: Can "metric_tune" be anything other than the two listed options?
         if metric_tune == "AUC":
             self._scoring_metric = metrics.make_scorer(metrics.roc_auc_score, response_method="predict_proba")
         elif metric_tune == "Balanced_Accuracy":
@@ -124,14 +116,14 @@ class Tune:
             self._algorithm, 
         ))
         self._y_pred_prob = self._algorithm.predict_proba(self._x_tune)
-        self._algorithm_name = self._algorithm.__class__.__name__
+        self._algorithm_name = utils.get_algorithm_name(self._algorithm)
 
 
     def plot_results(self):
         """ Plot results from best-performing algorithm. """
         discrete_utils.plot_results(
             self._run_prefix,
-            self._y_tune,
+            self._y_tune.values,
             self._y_pred_prob,
             self._algorithm_name,
         )

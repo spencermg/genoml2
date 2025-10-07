@@ -515,7 +515,7 @@ def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, colu
             with Timer() as timer:
                 algorithm.fit(x_train, y_train)
 
-            row = [algorithm_name, timer.elapsed()] + calculate_accuracy_scores(x_valid, y_valid, algorithm)
+            row = [algorithm_name, timer.elapsed()] + list(calculate_accuracy_scores(x_valid, y_valid, algorithm))
 
             results_str = metrics_to_str(dict(zip(column_names, row)))
             with DescriptionLoader.context(

@@ -61,7 +61,7 @@ class Adjuster:
             })
 
             fig, ax = plt.subplots(figsize=(12,10))
-            plt.scatter(embedding[:,0], embedding[:,1], cmap="cool")
+            plt.scatter(embedding[:,0], embedding[:,1])
             plt.title("Data Reduction to 2 Dimensions by UMAP", fontsize=18)
 
             plot_out = self.run_prefix.joinpath(f"umap_plot_{dataset_type}.png")

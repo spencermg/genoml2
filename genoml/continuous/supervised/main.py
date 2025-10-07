@@ -40,6 +40,5 @@ def tune(prefix, metric_tune, max_iter, cv_count):
 
 def test(prefix):
     tester = Test(prefix)
-    tester.performance_metrics()
     tester.export_prediction_data()
     tester.additional_sumstats()

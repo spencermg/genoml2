@@ -16,11 +16,9 @@
 import pandas as pd
 from pathlib import Path
 from sklearn import model_selection
-from sklearn.multiclass import OneVsRestClassifier
 from genoml.models import get_candidate_algorithms
 import genoml.multiclass.utils as multiclass_utils
 from genoml import utils
-import joblib
 import sys
 
 

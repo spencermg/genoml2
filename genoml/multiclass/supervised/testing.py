@@ -42,7 +42,7 @@ class Test:
         self._ids_test = df.ID
         x_test = df.drop(columns=['ID', 'PHENO'])
         self._y_pred = algorithm.predict_proba(x_test)
-        self._algorithm_name = algorithm.estimator.__class__.__name__
+        self._algorithm_name = utils.get_algorithm_name(algorithm)
         self.num_classes = None
         
 
@@ -70,7 +70,7 @@ class Test:
     def additional_sumstats(self):
         """ Save performance metrics for testing data """
         log_table = pd.DataFrame(
-            data=[[self._algorithm_name] + multiclass_utils._calculate_accuracy_scores(self._y_test, self._y_pred)], 
+            data=[[self._algorithm_name] + list(multiclass_utils._calculate_accuracy_scores(self._y_test, self._y_pred))], 
             columns=["Algorithm", "AUC", "Accuracy", "Balanced_Accuracy", "Log_Loss", "Sensitivity", "Specificity", "PPV", "NPV"],
         )
         log_outfile = self._run_prefix.joinpath('performance_metrics.txt')

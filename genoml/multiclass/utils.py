@@ -18,7 +18,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn import metrics
-from genoml import utils
 
 
 ### TODO: Inputs should be numpy instead of pandas?
@@ -172,8 +171,22 @@ def _calculate_accuracy_scores(y, y_pred_proba):
         y (pandas.DataFrame): Reported output features.
         y_pred_proba (pandas.DataFrame): Predicted output features.
 
-    :return: accuracy_metrics *(list)*: \n
-        Accuracy metrics used for the multiclass prediction module.
+    :return: rocauc *(float)*: \n
+        ROC AUC score.
+    :return: acc *(float)*: \n
+        Accuracy score.
+    :return: balacc *(float)*: \n
+        Balanced accuracy score.
+    :return: ll *(float)*: \n
+        Log loss.
+    :return: sens *(float)*: \n
+        Sensitivity.
+    :return: spec *(float)*: \n
+        Specificity.
+    :return: ppv *(float)*: \n
+        Positive predictive value.
+    :return: npv *(float)*: \n
+        Negative predictive value.
     """
 
     y_dummies = pd.get_dummies(y)
@@ -199,8 +212,7 @@ def _calculate_accuracy_scores(y, y_pred_proba):
         ppv += tp / (tp+fp) / n_classes
         npv += tn / (tn+fn) / n_classes
 
-    accuracy_metrics = [rocauc, acc, balacc, ll, sens, spec, ppv, npv]
-    return accuracy_metrics
+    return rocauc, acc, balacc, ll, sens, spec, ppv, npv
 
 
 def export_prediction_tables(y, y_pred_prob, ids, output_path, num_classes, dataset="withheld test"):

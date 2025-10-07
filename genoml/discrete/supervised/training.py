@@ -14,8 +14,6 @@
 # ==============================================================================
 
 
-import joblib
-import pandas as pd
 from pathlib import Path
 from sklearn import model_selection
 from genoml.models import get_candidate_algorithms
@@ -134,7 +132,7 @@ class Train:
         """ Plot results from best-performing algorithm. """
         discrete_utils.plot_results(
             self._run_prefix,
-            self._y_valid,
+            self._y_valid.values,
             self._y_pred_prob,
             self._best_algorithm_name,
         )
