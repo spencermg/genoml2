@@ -14,6 +14,7 @@
 # ==============================================================================
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from sklearn import metrics
 import seaborn as sns
@@ -143,18 +144,16 @@ def calculate_accuracy_scores(x, y, algorithm):
         Accuracy metrics used for the discrete prediction module.
     """
 
-    y_pred = algorithm.predict(x)
     y_pred_prob = algorithm.predict_proba(x)
-    return _calculate_accuracy_scores(y, y_pred, y_pred_prob)
+    return _calculate_accuracy_scores(y, y_pred_prob)
 
 
-def _calculate_accuracy_scores(y, y_pred, y_pred_prob):
+def _calculate_accuracy_scores(y, y_pred_prob):
     """
     Calculate accuracy metrics for the chosen discrete prediction model.
 
     Args:
         y (pandas.DataFrame): Reported output features.
-        y_pred (pandas.DataFrame): Predicted output features.
         y_pred_prob (pandas.DataFrame): Predicted case probabilities.
     
     :return: rocauc *(float)*: \n
@@ -175,6 +174,7 @@ def _calculate_accuracy_scores(y, y_pred, y_pred_prob):
         Negative predictive value.
     """
 
+    y_pred = np.argmax(y_pred_prob, axis=1)
     y_pred_prob = y_pred_prob[:,1]
 
     rocauc = metrics.roc_auc_score(y, y_pred_prob)
@@ -213,7 +213,6 @@ def export_prediction_tables(y, y_pred, ids, output_path, dataset="withheld test
     y_pred = pd.DataFrame(y_pred, dtype=float)
     df_predicted_cases = y_pred.idxmax(axis=1)
     case_probs = pd.DataFrame(y_pred.iloc[:,1])
-    y = pd.DataFrame(y)
     ids = pd.DataFrame(ids)
     df_prediction = pd.concat(
         [

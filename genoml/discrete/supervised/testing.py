@@ -41,7 +41,6 @@ class Test:
         self._y_test = df.PHENO
         self._ids_test = df.ID
         x_test = df.drop(columns=['ID', 'PHENO'])
-        self._y_pred = algorithm.predict(x_test)
         self._y_pred_prob = algorithm.predict_proba(x_test)
         self._algorithm_name = utils.get_algorithm_name(algorithm)
     
@@ -69,7 +68,7 @@ class Test:
     def additional_sumstats(self):
         """ Save performance metrics for testing data """
         log_table = pd.DataFrame(
-            data=[[self._algorithm_name] + list(discrete_utils._calculate_accuracy_scores(self._y_test, self._y_pred, self._y_pred_prob))], 
+            data=[[self._algorithm_name] + list(discrete_utils._calculate_accuracy_scores(self._y_test, self._y_pred_prob))], 
             columns=["Algorithm", "AUC", "Accuracy", "Balanced_Accuracy", "Log_Loss", "Sensitivity", "Specificity", "PPV", "NPV"],
         )
         log_outfile = self._run_prefix.joinpath('performance_metrics.txt')

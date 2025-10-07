@@ -15,6 +15,7 @@
 
 import genoml.multiclass.utils as multiclass_utils
 import joblib
+import pandas as pd
 import sys
 from pathlib import Path
 from genoml import utils
@@ -66,9 +67,9 @@ class Tune:
         self._cv_baseline = None
         self._cv_results = None
         self._algorithm_tuned = None
-        self._num_classes = None
         self._y_pred = None
         self._algorithm_name = None
+        self._num_classes = None
 
         # Communicate to the user the best identified algorithm 
         algo_name = utils.get_algorithm_name(self._algorithm)
@@ -129,7 +130,7 @@ class Tune:
         """ Plot results from best-performing algorithm. """
         self._num_classes = multiclass_utils.plot_results(
             self._run_prefix,
-            self._y_tune,
+            pd.get_dummies(self._y_tune).values,
             self._y_pred_prob,
             self._algorithm_name,
         )

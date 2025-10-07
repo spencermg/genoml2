@@ -71,8 +71,8 @@ class Train:
         self._best_algorithm = None
         self._best_algorithm_name = None
         self._log_table = []
+        self._y_pred_prob = None
         self._num_classes = None
-        self._y_pred = None
 
     
     def compete(self):
@@ -89,10 +89,11 @@ class Train:
         )
 
     
+    ### TODO: Update this to be specific to multiclass
     def select_best_algorithm(self):
         """ Determine the best-performing algorithm. """
-        # Drop those that have an accuracy less than 50%, balanced accuracy less than 50%, delta between sensitivity
-        # and specificity greater than 0.85, sensitivity equal to 0 or 1, or specificity equal to 0 or 1.
+        # Drop those that have a delta between sensitivity and specificity greater than 0.85, 
+        # sensitivity equal to 0 or 1, or specificity equal to 0 or 1.
         filtered_table = self._log_table[
             (self._log_table['Sensitivity'].sub(self._log_table['Specificity'], axis=0).abs() < 0.85)
             & (self._log_table['Sensitivity'] != 0.0)
@@ -111,7 +112,7 @@ class Train:
             self._metric_max, 
             self._algorithms,
         )
-        self._y_pred = self._best_algorithm.predict_proba(self._x_valid)
+        self._y_pred_prob = self._best_algorithm.predict_proba(self._x_valid)
         self._best_algorithm_name = utils.get_algorithm_name(self._best_algorithm)
         with open(self._run_prefix.parent.joinpath("algorithm.txt"), "w") as file:
             file.write(self._best_algorithm_name)
@@ -129,8 +130,8 @@ class Train:
         """ Plot results from best-performing algorithm. """
         self._num_classes = multiclass_utils.plot_results(
             self._run_prefix,
-            self._y_valid,
-            self._y_pred,
+            pd.get_dummies(self._y_valid).values,
+            self._y_pred_prob,
             self._best_algorithm_name,
         )
     
@@ -140,7 +141,7 @@ class Train:
         multiclass_utils.export_prediction_data(
             self._run_prefix,
             self._y_valid,
-            self._y_pred,
+            self._y_pred_prob,
             self._ids_valid,
             self._num_classes,
             y_train = pd.get_dummies(self._y_train),

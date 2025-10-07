@@ -250,9 +250,9 @@ def select_best_algorithm(log_table, metric_max, algorithms):
     """
 
     best_id = log_table[metric_max].idxmax()
-    best_algorithm_name = log_table.iloc[best_id].Algorithm
+    best_algorithm_name = log_table.loc[best_id, "Algorithm"]
     best_algorithm = algorithms[best_algorithm_name]
-    best_algorithm_metrics = log_table.iloc[best_id].to_dict()
+    best_algorithm_metrics = log_table.loc[best_id].to_dict()
 
     DescriptionLoader.print(
         "utils/training/compete/algorithm/best",

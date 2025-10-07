@@ -27,7 +27,7 @@ def plot_results(out_dir, y, y_pred_prob, algorithm_name):
 
     Args:
         out_dir (pathlib.Path): Directory where results are saved.
-        y (pandas.DataFrame): Ground truth phenotypes.
+        y (numpy.ndarray): Ground truth phenotypes.
         y_pred_prob (pandas.DataFrame): Predicted phenotype probabilities.
         algorithm_name (str): Name of the algorithm used for prediction.
 
@@ -38,19 +38,18 @@ def plot_results(out_dir, y, y_pred_prob, algorithm_name):
     roc_path = out_dir.joinpath('roc.png')
     precision_recall_path = out_dir.joinpath('precision_recall.png')
     num_classes = y_pred_prob.shape[1]
-    y_dummies = pd.get_dummies(y)
-    ROC(roc_path, y_dummies.values, y_pred_prob, algorithm_name, num_classes)
-    precision_recall_plot(precision_recall_path, y_dummies.values, y_pred_prob, algorithm_name, num_classes)
+    ROC(roc_path, y, y_pred_prob, algorithm_name, num_classes)
+    precision_recall_plot(precision_recall_path, y, y_pred_prob, algorithm_name, num_classes)
     return num_classes
 
 
-def ROC(plot_path, y_dummies, y_pred_prob, algorithm_name, num_classes):
+def ROC(plot_path, y, y_pred_prob, algorithm_name, num_classes):
     """
     Generate ROC plots for each class given ground-truth values and corresponding predictions.
 
     Args:
         plot_path (str): File path where plot will be saved to.
-        y_dummies (numpy.ndarray): Ground truth phenotypes.
+        y (numpy.ndarray): Ground truth phenotypes.
         y_pred_prob (numpy.ndarray): Predicted probabilities for each class.
         algorithm_name (str): Label to add to plot title.
         num_classes (int): Number of classes being predicted.
@@ -60,8 +59,8 @@ def ROC(plot_path, y_dummies, y_pred_prob, algorithm_name, num_classes):
     plt.plot([0, 1], [0, 1], 'r--')
 
     for i in range(num_classes):
-        fpr, tpr, _ = metrics.roc_curve(y_dummies[:, i], y_pred_prob[:, i])
-        roc_auc = metrics.roc_auc_score(y_dummies[:, i], y_pred_prob[:, i])
+        fpr, tpr, _ = metrics.roc_curve(y[:, i], y_pred_prob[:, i])
+        roc_auc = metrics.roc_auc_score(y[:, i], y_pred_prob[:, i])
         plt.plot(fpr, tpr, label=f"Class {i + 1} (area = {roc_auc:.3f})")
 
     plt.xlim([0.0, 1.05])
@@ -75,13 +74,13 @@ def ROC(plot_path, y_dummies, y_pred_prob, algorithm_name, num_classes):
           f"in the withheld test data for the best performing algorithm.")
 
 
-def precision_recall_plot(plot_path, y_dummies, y_pred_prob, algorithm_name, num_classes):
+def precision_recall_plot(plot_path, y, y_pred_prob, algorithm_name, num_classes):
     """
     Generate precision-recall plots for each class given ground-truth values and corresponding predictions.
 
     Args:
         plot_path (str): File path where plot will be saved to.
-        y_dummies (numpy.ndarray): Ground truth phenotypes.
+        y (numpy.ndarray): Ground truth phenotypes.
         y_pred_prob (numpy.ndarray): Predicted probabilities for each class.
         algorithm_name (str): Label to add to plot title.
         num_classes (int): Number of classes being predicted.
@@ -90,7 +89,7 @@ def precision_recall_plot(plot_path, y_dummies, y_pred_prob, algorithm_name, num
     plt.figure()
 
     for i in range(num_classes):
-        precision, recall, _ = metrics.precision_recall_curve(y_dummies[:, i], y_pred_prob[:, i])
+        precision, recall, _ = metrics.precision_recall_curve(y[:, i], y_pred_prob[:, i])
         plt.plot(precision, recall, label=f"Class {i + 1}")
 
     plt.xlim([0.0, 1.05])

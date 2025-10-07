@@ -60,16 +60,18 @@ class Train:
         self._run_prefix = Path(prefix).joinpath("Train")
         if not self._run_prefix.is_dir():
             self._run_prefix.mkdir()
+        self._ids_train = x_train.ID
+        self._ids_valid = x_valid.ID
         self._x_train = x_train.drop(columns=['ID'])
         self._x_valid = x_valid.drop(columns=['ID'])
         self._y_train = y_train
         self._y_valid = y_valid
-        self._ids_train = x_train.ID
-        self._ids_valid = x_valid.ID
         self._algorithms = {utils.get_algorithm_name(algorithm): algorithm for algorithm in candidate_algorithms}
         self._metric_max = metric_max
         self._best_algorithm = None
+        self._best_algorithm_name = None
         self._log_table = []
+        self._y_pred_prob = None
 
 
     def compete(self):
@@ -104,10 +106,6 @@ class Train:
         if filtered_table.empty:
             print('It seems as though all the algorithms are over-fit in some way or another... We will report the best algorithm based on your chosen metric instead and use that moving forward.')
             filtered_table = self._log_table
-
-        # Sort the table and reset the index so that we can access the best algorithm at index 0
-        filtered_table = filtered_table.sort_values(self._metric_max, ascending=False)
-        filtered_table = filtered_table.reset_index(drop=True)
 
         self._best_algorithm = utils.select_best_algorithm(
             filtered_table, 
