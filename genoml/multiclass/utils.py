@@ -20,7 +20,6 @@ import numpy as np
 from sklearn import metrics
 
 
-### TODO: Inputs should be numpy instead of pandas?
 def plot_results(out_dir, y, y_pred_prob, algorithm_name):
     """
     Generate ROC and precision-recall plots for each class.
