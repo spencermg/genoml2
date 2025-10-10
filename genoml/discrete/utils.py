@@ -16,8 +16,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn import metrics
 import seaborn as sns
+from sklearn import metrics
 
 
 def plot_results(out_dir, y, y_pred_prob, algorithm_name):
@@ -182,15 +182,15 @@ def _calculate_accuracy_scores(y, y_pred_prob):
     balacc = metrics.balanced_accuracy_score(y, y_pred) * 100
     ll = metrics.log_loss(y, y_pred_prob)
     
-    CM = metrics.confusion_matrix(y, y_pred)
-    TN = CM[0][0]
-    FN = CM[1][0]
-    TP = CM[1][1]
-    FP = CM[0][1]
-    sens = TP/(TP+FN)
-    spec = TN/(TN+FP)
-    ppv = TP/(TP+FP)
-    npv = TN/(TN+FN)
+    cm = metrics.confusion_matrix(y, y_pred)
+    tn = cm[0][0]
+    fn = cm[1][0]
+    tp = cm[1][1]
+    fp = cm[0][1]
+    sens = (tp / (tp + fn) if (tp + fn) > 0 else 0)
+    spec = (tn / (tn + fp) if (tn + fp) > 0 else 0)
+    ppv  = (tp / (tp + fp) if (tp + fp) > 0 else 0)
+    npv  = (tn / (tn + fn) if (tn + fn) > 0 else 0)
 
     return rocauc, acc, balacc, ll, sens, spec, ppv, npv
 

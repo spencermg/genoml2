@@ -17,8 +17,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import statsmodels.formula.api as sm
-from sklearn import metrics
 from genoml import utils
+from sklearn import metrics
 
 
 def export_prediction_data(out_dir, ids, step, y, y_predicted, y_withheld=None, y_withheld_predicted=None):

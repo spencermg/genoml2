@@ -119,11 +119,12 @@ class Harmonize:
                 for col in missing_cols:
                     self.df_merged_harmonize[col] = self.avg_vals[col]
                     file.write(f'{col}\t{self.avg_vals[col]}\n')
+            self.df_merged_harmonize = self.df_merged_harmonize[self.cols]
 
             print_str = f"{len(missing_cols)} of the {len(self.cols)} features that were used to fit the model which are not present in the dataset you're harmonizing! \n"
-            print_str = "You have chosen to impute these values using the average from the training data. \n"
-            print_str = "However, in the future we STRONGLY recommend using the same features that were used to fit your model. \n"
-            print_str = f"A list of missing columns and the values used for imputation has been written to {self.prefix.joinpath('missing_cols.txt')} \n"
+            print_str += "You have chosen to impute these values using the average from the training data. \n"
+            print_str += "However, in the future we STRONGLY recommend using the same features that were used to fit your model. \n"
+            print_str += f"A list of missing columns and the values used for imputation has been written to {self.prefix.joinpath('missing_cols.txt')} \n"
             if len(missing_cols) < 10:
                 print_str += "These are:\n - "
                 print_str += "\n - ".join(missing_cols)
@@ -145,6 +146,7 @@ class Harmonize:
                 self.confounders,
                 self.adjust_normalize,
                 self.umap_reducer is not None,
+                force_impute=self.force_impute,
             )
             _ = harmonize_adjuster.umap_reducer("harmonize", reducer=self.umap_reducer)
             self.df_merged_harmonize, _ = harmonize_adjuster.adjust_confounders(adjustment_models=self.adjustment_models)

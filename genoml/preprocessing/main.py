@@ -40,8 +40,6 @@ def munge(
     munger.save_data()
 
 
-### TODO: For --force-impute, show what % features are being imputed if they do it.
-### TODO: If they are imputing something in, it can't be a feature they correct for with covariates.
 def harmonize(
     prefix, geno_harmonize_path, pheno_harmonize_path, addit_harmonize_path, confounders, force_impute, data_type,
 ):

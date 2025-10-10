@@ -14,26 +14,26 @@
 # ==============================================================================
 
 
-from sklearn import discriminant_analysis, ensemble, linear_model, neighbors, neural_network, svm
 import xgboost
+from sklearn import discriminant_analysis, ensemble, linear_model, neighbors, neural_network, svm
 
 
 CONTINUOUS_BASE_ESTIMATORS_ADABOOST = [
     linear_model.ElasticNet(),
-    neural_network.MLPRegressor(),
+    neural_network.MLPRegressor(max_iter=1000),
     linear_model.SGDRegressor(),
     svm.SVR(gamma='auto'),
 ]
 CONTINUOUS_BASE_ESTIMATORS_BAGGING = [
     linear_model.ElasticNet(),
     neighbors.KNeighborsRegressor(),
-    neural_network.MLPRegressor(),
+    neural_network.MLPRegressor(max_iter=1000),
     linear_model.SGDRegressor(),
     svm.SVR(gamma='auto'),
 ]
 DISCRETE_BASE_ESTIMATORS_ADABOOST = [
     linear_model.LogisticRegression(),
-    neural_network.MLPClassifier(),
+    neural_network.MLPClassifier(max_iter=1000),
     linear_model.SGDClassifier(loss='modified_huber'),
     svm.SVC(probability=True, gamma='scale'),
 ]
@@ -41,7 +41,7 @@ DISCRETE_BASE_ESTIMATORS_BAGGING = [
     neighbors.KNeighborsClassifier(),
     discriminant_analysis.LinearDiscriminantAnalysis(),
     linear_model.LogisticRegression(),
-    neural_network.MLPClassifier(),
+    neural_network.MLPClassifier(max_iter=1000),
     discriminant_analysis.QuadraticDiscriminantAnalysis(),
     linear_model.SGDClassifier(loss='modified_huber'),
     svm.SVC(probability=True, gamma='scale'),

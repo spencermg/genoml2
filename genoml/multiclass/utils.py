@@ -13,10 +13,10 @@
 # limitations under the License.
 # ==============================================================================
 
-import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import seaborn as sns
 from sklearn import metrics
 
 
@@ -200,15 +200,15 @@ def _calculate_accuracy_scores(y, y_pred_proba):
     for class_ in range(n_classes):
         y_vals_class = np.where(y == class_, 1, 0)
         y_vals_pred_class = np.where(y_pred_argmax == class_, 1, 0)
-        CM = metrics.confusion_matrix(y_vals_class, y_vals_pred_class)
-        tn = CM[0][0]
-        fn = CM[1][0]
-        tp = CM[1][1]
-        fp = CM[0][1]
-        sens += tp / (tp+fn) / n_classes
-        spec += tn / (tn+fp) / n_classes
-        ppv += tp / (tp+fp) / n_classes
-        npv += tn / (tn+fn) / n_classes
+        cm = metrics.confusion_matrix(y_vals_class, y_vals_pred_class)
+        tn = cm[0][0]
+        fn = cm[1][0]
+        tp = cm[1][1]
+        fp = cm[0][1]
+        sens += (tp / (tp + fn) if (tp + fn) > 0 else 0) / n_classes
+        spec += (tn / (tn + fp) if (tn + fp) > 0 else 0) / n_classes
+        ppv  += (tp / (tp + fp) if (tp + fp) > 0 else 0) / n_classes
+        npv  += (tn / (tn + fn) if (tn + fn) > 0 else 0) / n_classes
 
     return rocauc, acc, balacc, ll, sens, spec, ppv, npv
 

@@ -13,12 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-from pathlib import Path
 import sys
-from sklearn import model_selection
-from genoml.models import get_candidate_algorithms
 from genoml import utils
 from genoml.continuous import utils as continuous_utils
+from genoml.models import get_candidate_algorithms
+from pathlib import Path
+from sklearn import model_selection
 
 
 class Train:

@@ -13,13 +13,13 @@
 # limitations under the License.
 # ==============================================================================
 
+import genoml.multiclass.utils as multiclass_utils
 import pandas as pd
+import sys
+from genoml import utils
+from genoml.models import get_candidate_algorithms
 from pathlib import Path
 from sklearn import model_selection
-from genoml.models import get_candidate_algorithms
-import genoml.multiclass.utils as multiclass_utils
-from genoml import utils
-import sys
 
 
 class Train:

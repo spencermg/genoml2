@@ -16,15 +16,14 @@
 # Import the necessary packages
 import argparse
 import functools
-import sys
-from pathlib import Path
-from datetime import datetime
-
-from genoml import utils, dependencies
+import genoml.continuous.supervised.main as continuous_supervised
 import genoml.discrete.supervised.main as discrete_supervised
 import genoml.multiclass.supervised.main as multiclass_supervised
-import genoml.continuous.supervised.main as continuous_supervised
 import genoml.preprocessing.main as preprocessing
+import sys
+from datetime import datetime
+from genoml import utils, dependencies
+from pathlib import Path
 
 
 ### TODO: Add variables for loading intermediate results that were not generated within GenoML.

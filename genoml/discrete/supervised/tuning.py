@@ -16,8 +16,8 @@
 import genoml.discrete.utils as discrete_utils
 import joblib
 import sys
-from pathlib import Path
 from genoml import utils
+from pathlib import Path
 from sklearn import metrics
 
 
@@ -67,7 +67,7 @@ class Tune:
         # Communicate to the user the best identified algorithm 
         algo_name = utils.get_algorithm_name(self._algorithm)
         print(f"From previous analyses in the training phase, we've determined that the best "
-              f"algorithm for this application is {algo_name.replace('_', 'using ')}... so "
+              f"algorithm for this application is {algo_name.replace('_', ' using ')}... so "
               "let's tune it up and see what gains we can make!")
 
 

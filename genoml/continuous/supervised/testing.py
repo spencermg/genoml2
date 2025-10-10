@@ -13,12 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
+import genoml.continuous.utils as continuous_utils
 import joblib
 import pandas as pd
-import genoml.continuous.utils as continuous_utils
 import sys
-from pathlib import Path
 from genoml import utils
+from pathlib import Path
 
 
 ### TODO: Add functionality to apply models without having ground truth data

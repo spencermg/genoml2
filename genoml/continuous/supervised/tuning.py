@@ -13,12 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-from pathlib import Path
-from sklearn import metrics
+import genoml.continuous.utils as continuous_utils
+import joblib
 import sys
 from genoml import utils
-import joblib
-import genoml.continuous.utils as continuous_utils
+from pathlib import Path
+from sklearn import metrics
 
 
 class Tune():

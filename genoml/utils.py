@@ -16,13 +16,12 @@
 import joblib
 import json
 import os
-import time
-import traceback
 import pandas as pd
 import textwrap
-from sklearn import model_selection
+import time
+import traceback
 from pathlib import Path
-from scipy import stats
+from sklearn import model_selection
 from skopt import BayesSearchCV
 from skopt.space import Real, Integer, Categorical
 
@@ -710,7 +709,6 @@ def get_tuning_hyperparams(module):
             "estimator__penalty": Categorical(["elasticnet"]),
             "estimator__alpha": Real(1e-5, 1e0, prior="log-uniform"), 
             "estimator__l1_ratio": Real(0, 1),
-            "estimator__n_jobs": Categorical([-1]),
             "estimator__learning_rate": Categorical(["constant", "optimal", "invscaling", "adaptive"]),
         },
         "SVC" : {

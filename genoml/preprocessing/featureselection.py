@@ -14,8 +14,7 @@
 # ==============================================================================
 
 import pandas as pd
-from sklearn import ensemble
-from sklearn import feature_selection
+from sklearn import ensemble, feature_selection
 
 class FeatureSelection:
     def __init__(self, run_prefix, df, data_type, n_est):
@@ -40,7 +39,6 @@ class FeatureSelection:
         clf.fit(self.x, self.y)
         
         # Code to drop the features below threshold and return the dataset like it was (aka add PHENO and IDs back)
-        ### TODO: Look into warning message from this
         model = feature_selection.SelectFromModel(clf, prefit=True)
         df_feature_scores = pd.DataFrame(
             zip(self.x.columns, clf.feature_importances_),

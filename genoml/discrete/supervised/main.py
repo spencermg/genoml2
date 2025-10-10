@@ -13,10 +13,9 @@
 # limitations under the License.
 # ==============================================================================
 
-import sys
+from genoml.discrete.supervised.testing import Test
 from genoml.discrete.supervised.training import Train
 from genoml.discrete.supervised.tuning import Tune
-from genoml.discrete.supervised.testing import Test
 
 
 def train(prefix, metric_max):

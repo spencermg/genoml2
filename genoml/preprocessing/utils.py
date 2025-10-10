@@ -70,24 +70,24 @@ def gwas_filter(run_prefix, gwas_paths, p_gwas):
 
 
 def read_pheno_file(pheno_path, data_type):
-    pheno_df = pd.read_csv(pheno_path, sep=None, encoding="utf-8-sig")
+    df_pheno = pd.read_csv(pheno_path, engine="python", sep=None, encoding="utf-8-sig")
     try:
-        if not {'ID', 'PHENO'}.issubset(pheno_df.columns):
+        if not {'ID', 'PHENO'}.issubset(df_pheno.columns):
             raise ValueError("Error: It doesn't look as though your phenotype file is properly formatted. Did you check"
                              " that the columns are 'ID' and 'PHENO' and that controls=0 and cases=1?")
     except ValueError as ve:
         print(ve)
         sys.exit()
-    pheno_df['ID'] = pheno_df['ID'].astype(str)
+    df_pheno['ID'] = df_pheno['ID'].astype(str)
     if data_type == "c":
-        pheno_df['PHENO'] = pheno_df['PHENO'].astype(float)
+        df_pheno['PHENO'] = df_pheno['PHENO'].astype(float)
     else:
-        pheno_df['PHENO'] = pd.Categorical(pheno_df['PHENO']).codes
-    return pheno_df
+        df_pheno['PHENO'] = pd.Categorical(df_pheno['PHENO']).codes
+    return df_pheno
 
 
 def create_geno_df(run_prefix):
-    df_geno = pd.read_csv(str(run_prefix.joinpath('temp_genos.raw')), sep=r"\s+", engine='c')
+    df_geno = pd.read_csv(str(run_prefix.joinpath('temp_genos.raw')), sep=r"\s+", engine="c")
     cols = df_geno.columns.values
     cols.sort()
     df_geno.drop(["FID","PAT","MAT","SEX","PHENOTYPE"], axis=1, inplace=True)
@@ -278,7 +278,7 @@ def merge_addit_data(df_merged, addit_path, impute_type):
     # Process non-genotype data if provided by the user
     if addit_path is not None:
         print("Processing non-genotype data")
-        df_addit = pd.read_csv(addit_path, sep=None, encoding="utf-8-sig")
+        df_addit = pd.read_csv(addit_path, engine="python", sep=None, encoding="utf-8-sig")
         df_addit['ID'] = df_addit['ID'].astype(str)
         df_addit = impute_df(df_addit, impute_type, feature_type="non-genotype")
         df_addit = normalize_cols(df_addit)
