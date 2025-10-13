@@ -423,9 +423,9 @@ def add_default_flag(parser, flag_name):
     elif flag_name == "vif":
         parser.add_argument(
             "--vif", 
-            type=int, 
+            type=float, 
             default=0,
-            help="Variance Inflation Factor (VIF): (integer). This is the VIF threshold for pruning "
+            help="Variance Inflation Factor (VIF): (float). This is the VIF threshold for pruning "
                  "non-genotype features. We recommend a value of 5-10. The default of 0 means no VIF "
                  "filtering will be done. [default: 0].",
         )

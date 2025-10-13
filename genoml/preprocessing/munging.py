@@ -137,13 +137,14 @@ class Munge:
     
     def feature_selection(self):
         """ extraTrees and VIF for to prune unnecessary features. """
+        ### TODO: Check that VIF and ExtraTrees do what we want them to do.
+        
         # Run the feature selection using extraTrees
         if self.n_est > 0:
             feature_selector = featureselection.FeatureSelection(self.prefix, self.df_merged, self.data_type, self.n_est)
             self.df_merged = feature_selector.rank()
             feature_selector.export_data()
 
-        ### TODO: Check that VIF and ExtraTrees do what we want them to do.
         # Run the VIF calculation
         if self.vif_iter > 0:
             munge_vif = vif.VIF(self.vif_iter, self.vif_thresh, self.df_merged, 100, self.prefix)

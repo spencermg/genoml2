@@ -18,10 +18,7 @@ from sklearn import ensemble, feature_selection
 
 class FeatureSelection:
     def __init__(self, run_prefix, df, data_type, n_est):
-        # Double check there are no NAs in the dataset before proceeding
-        remove_cols = df.columns[df.isna().any()].tolist()
-        df.drop(remove_cols, axis=1, inplace=True)
-
+        df.dropna(axis=1, inplace=True)
         self.run_prefix = run_prefix
         self.n_est = n_est
         self.data_type = data_type
@@ -48,14 +45,13 @@ class FeatureSelection:
         feature_scores_outfile = self.run_prefix.joinpath("approx_feature_importance.txt")
         df_feature_scores.to_csv(feature_scores_outfile, index=False, sep="\t")
 
+        ### TODO: Should we define a threshold somewhere? Currently only keeping features with importance > mean
         x_reduced = self.x.iloc[:, model.get_support()]
         self.df_selecta = pd.concat([
             self.ids.reset_index(drop=True), 
             self.y.reset_index(drop=True), 
-            x_reduced.reset_index(drop=True)
-        ], axis = 1, ignore_index=False
-        )
-        print(f"You have reduced your dataset to {x_reduced.shape[0]} samples at {x_reduced.shape[1]} features, not including ID and PHENO.")
+            x_reduced.reset_index(drop=True),
+        ], axis = 1, ignore_index=False)
         return self.df_selecta
 
 
@@ -66,7 +62,6 @@ class FeatureSelection:
             for feature in features_list:
                 f.write(feature + "\n")
 
-        print(f"""
-        An updated list of {len(features_list)} features, including ID and PHENO, that is in your munged dataForML.h5 file can be found here {features_listpath}
-        """)
+        ### TODO: This should be after VIF
+        print(f"An updated list of the {len(features_list) - 2} features, plus ID and PHENO, in your munged dataForML.h5 file can be found here {features_listpath}")
         

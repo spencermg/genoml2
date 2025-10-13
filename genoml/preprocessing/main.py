@@ -18,7 +18,6 @@ from genoml.preprocessing.harmonizing import Harmonize
 from genoml.preprocessing.munging import Munge
 
 
-### TODO: Add notice that using b-file inputs might cause weird results for any variants where Alt allele == Major allele
 ### TODO: Standard format for input files, csv vs tsv?
 ### TODO: Keep as is and only handle specific column headers, or let user define which columns correspond to which features as with PRSice?
 ### TODO: Look into recoding genotype data differently -- like plink additive vs hethom?

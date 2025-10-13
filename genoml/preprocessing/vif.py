@@ -16,7 +16,6 @@
 import joblib
 import numpy as np
 import pandas as pd
-import random
 from statsmodels.stats import outliers_influence
 
 
@@ -24,77 +23,53 @@ from statsmodels.stats import outliers_influence
 class VIF:
     def __init__(self, iterations, vif_threshold, df, chunk_size, run_prefix):
         self.iterations = iterations
-        self.threshold = vif_threshold
+        self.vif_threshold = vif_threshold
         self.df = df
-        self.id = df['ID']
-        self.pheno = df['PHENO']
         self.chunk_size = chunk_size
         self.run_prefix = run_prefix
-        self.cleaned_df = None
+        self.df_cleaned = None
         self.df_list = None
-        self.glued_df = None
+        self.df_concat = None
 
     def check_df(self):
         """
-        check_df takes in dataframe as an argument and strips it of missing values and non-numerical information.
-        ### Arguments:
-            df {pandas dataframe} -- A dataframe 
-        ### Returns:
-            cleaned_df {pandas dataframe} -- A cleaned dataframe with no NA values and only numerical values 
+        Strips the dataframe of missing values and non-numerical information.
         """
 
-        df = self.df
-
         print("Stripping erroneous space, dropping non-numeric columns...")
-        df.columns = df.columns.str.strip()
+        self.df.columns = self.df.columns.str.strip()
 
         print("Drop any rows where at least one element is missing...")
-        # Convert any infinite values to NaN prior to dropping NAs
-        df.replace([np.inf, -np.inf], np.nan)
-        df.dropna(how='any', inplace=True)
-        
-        self.original_df = df
+        self.df.replace([np.inf, -np.inf], np.nan, inplace=True)
+        self.df.dropna(how='any', inplace=True)
 
+        ### TODO: Should we sample more than this? And/or sample within each iteration?
         print("Sampling 100 rows at random to reduce memory overhead...")
-        cleaned_df = df.sample(n=100).copy().reset_index()
-        cleaned_df.drop(columns=["index"], inplace=True)
+        self.df_cleaned = self.df.sample(n=100, random_state=42).copy().reset_index()
 
-        print("Dropping columns that are not SNPs...")
-        cleaned_df.drop(columns=['PHENO'], axis=1, inplace=True)
-        cleaned_df.drop(columns=['ID'], axis=1, inplace=True)
+        print("Dropping columns that are not features...")
+        self.df_cleaned.drop(columns=["index", "PHENO", "ID"], inplace=True)
+        self.df_cleaned = self.df_cleaned.astype(float)
         print("Dropped!")
-
-        print("Cleaned!")
-        self.cleaned_df = cleaned_df
 
 
     def randomize_chunks(self):
-        chunk_size = self.chunk_size
-        cleaned_df = self.cleaned_df
+        """
+        Radomizes features in the dataframe and splits them into chunks of 
+        specified size to be used in VIF calculations.
+        """
 
-        """
-        randomize_chunks takes in a cleaned dataframe's column names, randomizes them, 
-        and spits out randomized, chunked dataframes with only SNPs for the VIF calculation later
-        ### Arguments:
-            cleaned_df {pandas dataframe} -- A cleaned dataframe 
-            chunk_size {int} -- Desired size of dataframe chunked (default=100)
-        ### Returns:
-            list_chunked_dfs {list dfs} -- A cleaned, randomized list of dataframes with only SNPs as columns
-        """
+        chunk_size = self.chunk_size
+        df_cleaned = self.df_cleaned
 
         print("Shuffling columns...")
-        col_names_list = cleaned_df.columns.values.tolist()
-        col_names_shuffle = random.sample(col_names_list, len(col_names_list))
-        cleaned_df = cleaned_df[col_names_shuffle]
+        df_cleaned = df_cleaned.sample(frac=1, axis=1, random_state=42)
         print("Shuffled!")
 
         print("Generating chunked, randomized dataframes...")
-        chunked_list = [col_names_shuffle[i * chunk_size:(i + 1) * chunk_size] for i in
-                        range((len(col_names_shuffle) + chunk_size - 1) // chunk_size)]
         self.df_list = []
-        for each_list in chunked_list:
-            temp_df = cleaned_df[each_list].astype(float)
-            self.df_list.append(temp_df.copy())
+        for i in range((df_cleaned.shape[1] + chunk_size - 1) // chunk_size):
+            self.df_list.append(df_cleaned.iloc[:, i*chunk_size : (i+1)*chunk_size].copy())
 
         print(f"The number of dataframes you have moving forward is {len(self.df_list)}")
         print("Complete!")
@@ -102,76 +77,42 @@ class VIF:
 
     def calculate_vif(self):
         """
-        calculate_vif takes in an list of randomized dataframes and removes any variables
-        that is greater than the specified threshold (default=5.0). This is to combat 
-        multicolinearity between the variables. The function then returns a fully VIF-filtered
-        dataframe.
-        ### Arguments:
-            df_list {list dfs} -- A list of cleaned, randomized pandas dataframes 
-            threshold {float} -- Cut-off for dropping following the VIF calculation (default=5.0)
-        ### Returns:
-            glued_df {pandas df} -- A complete VIF-filtered dataframe 
+        Removes any features from each chunked dataframe with VIF greater than
+        the specified threshold to combat multicolinearity between the variables. 
         """
-        threshold = self.threshold
 
-        dropped = True
-        print(f"Dropping columns with a VIF threshold greater than {threshold}")
-
+        print(f"Dropping columns with a VIF threshold greater than {self.vif_threshold}")
         for df in self.df_list:
-            while dropped:
-                # Loop until all variables in dataset have a VIF less than the threshold 
-                variables = df.columns
-                dropped = False
-                vif = []
+            while True:
+                # Calculate VIF for all columns
+                vif_vals = joblib.Parallel(n_jobs=5)(
+                    joblib.delayed(outliers_influence.variance_inflation_factor)(df.values, i)
+                    for i in range(df.shape[1])
+                )
 
-                # Changed to look at indexing 
-                # Added simple joblib parallelization
-                vif = joblib.Parallel(n_jobs=5)(
-                    joblib.delayed(outliers_influence.variance_inflation_factor)(df[variables].values, df.columns.get_loc(var)) for var in
-                    variables)
+                max_vif = max(vif_vals)
+                if max_vif <= self.vif_threshold:
+                    break
 
-                max_vif = max(vif)
-
-                if np.isinf(max_vif):
-                    maxloc = vif.index(max_vif)
-                    print(f'Dropping "{df.columns[maxloc]}" with VIF > {threshold}')
-                    dropped = True
-
-                if max_vif > threshold:
-                    maxloc = vif.index(max_vif)
-                    print(f'Dropping "{df.columns[maxloc]}" with VIF = {max_vif:.2f}')
-                    df.drop([df.columns.tolist()[maxloc]], axis=1, inplace=True)
-                    dropped = True
+                # Drop the column with the highest VIF
+                max_idx = vif_vals.index(max_vif)
+                col_to_drop = df.columns[max_idx]
+                print(f'Dropping "{col_to_drop}" with VIF = {max_vif:.2f}')
+                df.drop(columns=[col_to_drop], inplace=True)
 
         print("\nVIF calculation on all chunks complete! \n")
-
-        print("Gluing the dataframe back together...")
-        self.glued_df = pd.concat(self.df_list, axis=1)
+        self.df_concat = pd.concat(self.df_list, axis=1)
+        self.df_concat = self.df_concat.loc[:, ~self.df_concat.columns.duplicated()]
         print("Full VIF-filtered dataframe generated!")
 
     def vif_calculations(self):
         self.check_df()
 
+        ### TODO: each iteration of VIF does the same thing... what is this supposed to do?
         for iteration in range(self.iterations):
-            print(f"""
-                \n\n
-                Iteration {iteration + 1}
-                \n\n
-                """)
+            print(f"\n\nIteration {iteration + 1}\n\n")
             self.randomize_chunks()
             self.calculate_vif()
 
-        # When done, make list of features to keep 
-        features = self.glued_df.columns.values.tolist()
-
-        print(f"""
-        \n\n
-            Iterations Complete!
-        \n\n
-        """)
-
         # Return the original dataframe with the features to keep 
-        complete_vif_original_df = self.original_df[features]
-        complete_vif_original_df.insert(0, "ID", self.id)
-        complete_vif_original_df.insert(0, "PHENO", self.pheno)
-        return complete_vif_original_df
+        return self.df[["PHENO", "ID"] + self.df_concat.columns.values.tolist()]

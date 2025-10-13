@@ -29,6 +29,7 @@ def define_geno_bash_cmds(run_prefix, skip_prune, plink_exec, geno_path, r2, gwa
     var_path = str(run_prefix.joinpath('variants.txt'))
 
     # Default to using p-files if provided by the user, otherwise use b-files
+    ### TODO: Add notice that using b-file inputs might cause weird results for any variants where Alt allele == Major allele
     if Path(geno_path + ".pvar").exists() and Path(geno_path + ".pgen").exists() and Path(geno_path + ".psam").exists():
         print(f"A list of variants and the allele being counted in the dosages (usually the minor allele) can "
               f"be found here: {var_alleles_path}")
