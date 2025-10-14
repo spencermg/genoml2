@@ -29,7 +29,7 @@ class VIF:
         self.run_prefix = run_prefix
         self.df_cleaned = None
         self.df_list = None
-        self.df_concat = None
+        # self.df_concat = None
 
     def check_df(self):
         """
@@ -64,15 +64,13 @@ class VIF:
 
         print("Shuffling columns...")
         df_cleaned = df_cleaned.sample(frac=1, axis=1, random_state=42)
-        print("Shuffled!")
 
         print("Generating chunked, randomized dataframes...")
         self.df_list = []
         for i in range((df_cleaned.shape[1] + chunk_size - 1) // chunk_size):
             self.df_list.append(df_cleaned.iloc[:, i*chunk_size : (i+1)*chunk_size].copy())
 
-        print(f"The number of dataframes you have moving forward is {len(self.df_list)}")
-        print("Complete!")
+        print(f"Complete! The number of dataframes you have moving forward is {len(self.df_list)}")
 
 
     def calculate_vif(self):
@@ -101,8 +99,8 @@ class VIF:
                 df.drop(columns=[col_to_drop], inplace=True)
 
         print("\nVIF calculation on all chunks complete! \n")
-        self.df_concat = pd.concat(self.df_list, axis=1)
-        self.df_concat = self.df_concat.loc[:, ~self.df_concat.columns.duplicated()]
+        self.df_cleaned = pd.concat(self.df_list, axis=1)
+        self.df_cleaned = self.df_cleaned.loc[:, ~self.df_cleaned.columns.duplicated()]
         print("Full VIF-filtered dataframe generated!")
 
     def vif_calculations(self):
@@ -115,4 +113,4 @@ class VIF:
             self.calculate_vif()
 
         # Return the original dataframe with the features to keep 
-        return self.df[["PHENO", "ID"] + self.df_concat.columns.values.tolist()]
+        return self.df[["PHENO", "ID"] + self.df_cleaned.columns.values.tolist()]

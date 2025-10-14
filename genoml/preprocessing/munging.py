@@ -83,6 +83,7 @@ class Munge:
         self.features_list = None
 
 
+    ### TODO: Test what happens if there is missingness (do what we do in VIF but here instead?)
     def create_merged_datasets(self):
         """ Merge phenotype, genotype, and additional data. """
         self.df_merged = preprocessing_utils.read_pheno_file(self.pheno_path, self.data_type)
@@ -137,8 +138,6 @@ class Munge:
     
     def feature_selection(self):
         """ extraTrees and VIF for to prune unnecessary features. """
-        ### TODO: Check that VIF and ExtraTrees do what we want them to do.
-        
         # Run the feature selection using extraTrees
         if self.n_est > 0:
             feature_selector = featureselection.FeatureSelection(self.prefix, self.df_merged, self.data_type, self.n_est)
