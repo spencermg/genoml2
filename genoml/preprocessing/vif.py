@@ -29,7 +29,6 @@ class VIF:
         self.run_prefix = run_prefix
         self.df_cleaned = None
         self.df_list = None
-        # self.df_concat = None
 
     def check_df(self):
         """
@@ -82,6 +81,9 @@ class VIF:
         print(f"Dropping columns with a VIF threshold greater than {self.vif_threshold}")
         for df in self.df_list:
             while True:
+                if df.shape[1] == 1:
+                    break
+
                 # Calculate VIF for all columns
                 vif_vals = joblib.Parallel(n_jobs=5)(
                     joblib.delayed(outliers_influence.variance_inflation_factor)(df.values, i)
