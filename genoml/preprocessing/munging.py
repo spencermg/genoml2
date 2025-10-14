@@ -19,7 +19,7 @@ import numpy as np
 import pickle
 import sys
 from genoml import utils, dependencies
-from genoml.preprocessing import adjuster, vif, featureselection
+from genoml.preprocessing import adjuster, featureselection
 from time import time
 
 
@@ -27,7 +27,7 @@ class Munge:
     @utils.DescriptionLoader.function_description("info", cmd="Munging")
     def __init__(
         self, prefix, impute_type, geno_path, pheno_path, addit_path, geno_test_path, pheno_test_path, 
-        addit_test_path, skip_prune, r2, n_est, gwas_paths, p_gwas, vif_thresh, vif_iter, umap_reduce, 
+        addit_test_path, skip_prune, r2, n_trees, gwas_paths, p_gwas, vif_thresh, vif_iter, umap_reduce, 
         adjust_data, adjust_normalize, target_features, confounders, confounders_test, data_type,
     ):
         self.start = time()
@@ -65,7 +65,7 @@ class Munge:
         self.addit_test_path = addit_test_path
         self.skip_prune = skip_prune
         self.r2 = r2
-        self.n_est = n_est
+        self.n_trees = n_trees
         self.gwas_paths = gwas_paths
         self.p_gwas = p_gwas
         self.vif_thresh = vif_thresh
@@ -83,7 +83,6 @@ class Munge:
         self.features_list = None
 
 
-    ### TODO: Test what happens if there is missingness (do what we do in VIF but here instead?)
     def create_merged_datasets(self):
         """ Merge phenotype, genotype, and additional data. """
         self.df_merged = preprocessing_utils.read_pheno_file(self.pheno_path, self.data_type)
@@ -139,15 +138,16 @@ class Munge:
     def feature_selection(self):
         """ extraTrees and VIF for to prune unnecessary features. """
         # Run the feature selection using extraTrees
-        if self.n_est > 0:
-            feature_selector = featureselection.FeatureSelection(self.prefix, self.df_merged, self.data_type, self.n_est)
-            self.df_merged = feature_selector.rank()
-            feature_selector.export_data()
-
-        # Run the VIF calculation
-        if self.vif_iter > 0:
-            munge_vif = vif.VIF(self.vif_iter, self.vif_thresh, self.df_merged, 100, self.prefix)
-            self.df_merged = munge_vif.vif_calculations()
+        feature_selector = featureselection.FeatureSelection(
+            self.prefix, 
+            self.df_merged, 
+            self.data_type, 
+            self.n_trees, 
+            self.vif_iter, 
+            self.vif_thresh, 
+            100,
+        )
+        self.df_merged = feature_selector.select_features()
 
 
     def save_data(self):

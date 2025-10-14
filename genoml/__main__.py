@@ -118,7 +118,7 @@ def handle_multiclass_supervised():
 def handle_continuous_supervised_munge():
     handle_endpoints("genoml continuous supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
-                      "skip_prune", "r2_cutoff", "feature_selection", "gwas", "p", "vif", "vif_iter", "umap_reduce",
+                      "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "umap_reduce",
                       "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test"],
                       functools.partial(preprocessing.munge, data_type="c"), 3)
 
@@ -151,7 +151,7 @@ def handle_continuous_supervised_test():
 def handle_discrete_supervised_munge():
     handle_endpoints("genoml discrete supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
-                      "skip_prune", "r2_cutoff", "feature_selection", "gwas", "p", "vif", "vif_iter", "umap_reduce",
+                      "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "umap_reduce",
                       "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test"],
                       functools.partial(preprocessing.munge, data_type="d"), 3)
 
@@ -183,7 +183,7 @@ def handle_discrete_supervised_test():
 def handle_multiclass_supervised_munge():
     handle_endpoints("genoml multiclass supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
-                      "skip_prune", "r2_cutoff", "feature_selection", "gwas", "p", "vif", "vif_iter", "umap_reduce",
+                      "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "umap_reduce",
                       "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test"],
                       functools.partial(preprocessing.munge, data_type="d"), 3)
 
@@ -455,9 +455,10 @@ def add_default_flag(parser, flag_name):
             help="If harmonizing, add in missing columns using the average value from munging.",
         )
 
-    elif flag_name == "feature_selection":
+    ### TODO: Update this in the README
+    elif flag_name == "n_trees":
         parser.add_argument(
-            '--feature_selection', 
+            '--n_trees', 
             type=int, 
             default=0,
             help='Run a quick tree-based feature selection routine prior to anything else, here you '
