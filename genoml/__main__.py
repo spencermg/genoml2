@@ -455,7 +455,6 @@ def add_default_flag(parser, flag_name):
             help="If harmonizing, add in missing columns using the average value from munging.",
         )
 
-    ### TODO: Update this in the README
     elif flag_name == "n_trees":
         parser.add_argument(
             '--n_trees', 

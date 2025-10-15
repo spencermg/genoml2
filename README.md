@@ -196,21 +196,6 @@ genoml discrete supervised munge \
 --impute mean
 ```
 
-If you suspect collinear variables, and think this will be a problem for training the model moving forward, you can use [variance inflation factor](https://www.investopedia.com/terms/v/variance-inflation-factor.asp) (VIF) filtering: 
-```shell
-# Running GenoML munging on discrete data using PLINK genotype binary files and a phenotype file while using VIF to remove multicollinearity 
-
-genoml discrete supervised munge \
---prefix outputs \
---geno examples/discrete/training \
---pheno examples/discrete/training_pheno.csv \
---vif 5 \
---vif_iter 1
-```
-
-- The `--vif` flag specifies the VIF threshold you would like to use (5 is recommended) 
-- The number of iterations you'd like to run can be modified with the `--vif_iter` flag (if you have or anticipate many collinear variables, it's a good idea to increase the iterations)
-
 Well, what if you had GWAS summary statistics handy, and would like to just use the same SNPs outlined in that file? You can do so by running the following:
 ```shell
 # Running GenoML munging on discrete data using PLINK genotype binary files, a phenotype file, and a GWAS summary statistics file 
@@ -266,8 +251,9 @@ genoml discrete supervised munge \
 --pheno examples/discrete/training_pheno.csv \
 --addit examples/discrete/training_addit.csv
 ```
+Are you interested in pruning your data to keep only the most important features as inputs for your model? GenoML provides both a tree-based and a linear method for removing extraneous features.
 
-Are you interested in selecting and ranking your features? If so, you can use the `--feature_selection` flag and specify like so...:
+If you would like to use a tree-based pruning method, you can use the `--n_trees` flag and specify like so...:
 ```shell
 # Running GenoML munging on discrete data using PLINK genotype binary files, a phenotype file, and running feature selection 
 
@@ -276,9 +262,24 @@ genoml discrete supervised munge \
 --geno examples/discrete/training \
 --pheno examples/discrete/training_pheno.csv \
 --addit examples/discrete/training_addit.csv \
---feature_selection 50
+--n_trees 50
 ```
-The `--feature_selection` flag uses extraTrees ([classifier](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesClassifier.html) for discrete data; [regressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesRegressor.html) for continuous data) to output a `*.approx_feature_importance.txt` file with the features most contributing to your model at the top. 
+The `--n_trees` flag uses extraTrees ([classifier](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesClassifier.html) for discrete data; [regressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesRegressor.html) for continuous data) to output a `*.approx_feature_importance.txt` file with the features most contributing to your model at the top. 
+
+If you suspect collinear variables, and think this will be a problem for training the model moving forward, you can use [variance inflation factor](https://www.investopedia.com/terms/v/variance-inflation-factor.asp) (VIF) filtering: 
+```shell
+# Running GenoML munging on discrete data using PLINK genotype binary files and a phenotype file while using VIF to remove multicollinearity 
+
+genoml discrete supervised munge \
+--prefix outputs \
+--geno examples/discrete/training \
+--pheno examples/discrete/training_pheno.csv \
+--vif 5 \
+--vif_iter 1
+```
+
+- The `--vif` flag specifies the VIF threshold you would like to use (5 is recommended) 
+- The number of iterations you'd like to run can be modified with the `--vif_iter` flag (if you have or anticipate many collinear variables, it's a good idea to increase the iterations)
 
 Do you have additional covariates and confounders you would like to adjust for in the munging step prior to training your model and/or would like to reduce your data? To adjust, use the `--adjust_data` flag with the following necessary flags: 
 - `--target_features`: A .txt file, one column, with a list of features to adjust (no header). These should correspond to features in the munged dataset
@@ -483,7 +484,7 @@ genoml discrete supervised munge \
 --gwas examples/discrete/example_GWAS.csv \
 --gwas examples/discrete/example_GWAS_2.csv \
 --p 0.05 \
---feature_selection 50 \
+--n_trees 50 \
 --adjust_data \
 --adjust_normalize \
 --umap_reduce \
