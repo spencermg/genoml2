@@ -132,7 +132,7 @@ def handle_continuous_supervised_harmonize():
 
 def handle_continuous_supervised_train():
     handle_endpoints("genoml continuous supervised train",
-                     ["prefix", "metric_max"],
+                     ["prefix", "metric_max", "train_split"],
                      continuous_supervised.train, 3)
 
 
@@ -164,7 +164,7 @@ def handle_discrete_supervised_harmonize():
 
 def handle_discrete_supervised_train():
     handle_endpoints("genoml discrete supervised train",
-                     ["prefix", "metric_max"],
+                     ["prefix", "metric_max", "train_split"],
                      discrete_supervised.train, 3)
 
 
@@ -196,7 +196,7 @@ def handle_multiclass_supervised_harmonize():
 
 def handle_multiclass_supervised_train():
     handle_endpoints("genoml multiclass supervised train",
-                     ["prefix", "metric_max"],
+                     ["prefix", "metric_max", "train_split"],
                      multiclass_supervised.train, 3)
 
 
@@ -310,6 +310,14 @@ def add_default_flag(parser, flag_name):
             default=5,
             help='Number of cross validations: (integer likely greater than 3). Here we set the number of '
                  'cross-validation runs for the algorithms [default: 5].')
+
+    elif flag_name == "train_split":
+        parser.add_argument(
+            '--train_split', 
+            type=float, 
+            default=70,
+            help='Percent of samples to use for model fitting, with the rest used as withheld validation '
+                 'samples. Numbers below 1 will be treated as fractions [default: 70].')
 
     elif flag_name == "test_geno_prefix":
         parser.add_argument(

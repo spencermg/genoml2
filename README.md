@@ -408,6 +408,23 @@ genoml discrete supervised train \
 --metric_max Sensitivity
 ```
 
+The training module automatically splits your data, with 70% being used to directly fit the model and the other 30% being withheld to evaluate which model class generalizes best to unseen data. If you would like to use a different split, you may use `--train_split` to define the percentage of samples used for training, with the remainder being withheld for validation `(Note: Numbers less than 1 will be treated as fractions, with numbers greater than 1 treated as percentages)`:
+```shell
+# Running GenoML supervised training after munging on discrete data and electing to use an 80/20 train/validation split
+
+genoml discrete supervised train \
+--prefix outputs \
+--train_split 80
+```
+or
+```shell
+# Running GenoML supervised training after munging on discrete data and electing to use an 80/20 train/validation split
+
+genoml discrete supervised train \
+--prefix outputs \
+--train_split 0.8
+```
+
 <a id="3"></a>
 ## 3. Tuning with GenoML
 Tuning with GenoML applies fine-tuning with cross-validation using the trained model as a starting point to find the best set of hyperparameters for your datasets.

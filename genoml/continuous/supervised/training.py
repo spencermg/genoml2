@@ -23,7 +23,7 @@ from sklearn import model_selection
 
 class Train:
     @utils.DescriptionLoader.function_description("info", cmd="Continuous Supervised Training")
-    def __init__(self, prefix, metric_max):
+    def __init__(self, prefix, metric_max, train_split):
         utils.DescriptionLoader.print(
             "training/info",
             python_version=sys.version,
@@ -33,12 +33,15 @@ class Train:
 
         df = utils.read_munged_data(prefix, "train")
 
+        if train_split > 1:
+            train_split = train_split / 100
+
         y = df.PHENO
         x = df.drop(columns=['PHENO'])
         x_train, x_valid, y_train, y_valid = model_selection.train_test_split(
             x, 
             y, 
-            test_size=0.3, 
+            test_size=1-train_split, 
             random_state=42,
         )
 
