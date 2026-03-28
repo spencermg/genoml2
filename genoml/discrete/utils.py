@@ -17,23 +17,47 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from genoml import utils
 from sklearn import metrics
 
 
-def plot_results(out_dir, y, y_pred_prob, algorithm_name):
+def plot_results(out_dir, y, x, algorithm):
     """
     Generate ROC and precision-recall plots for each class.
 
     Args:
         out_dir (pathlib.Path): Directory where results are saved.
         y (numpy.ndarray): Ground truth phenotypes.
-        y_pred_prob (numpy.ndarray): Predicted phenotype probabilities.
-        algorithm_name: Classifier model in OneVsRestClassifier wrapper.
+        x (numpy.ndarray): Input values.
+        algorithm: Discrete prediction algorithm.
     """
-    
-    y_pred_prob = y_pred_prob[:,1]
-    roc_path = out_dir.joinpath('roc.png')
-    precision_recall_path = out_dir.joinpath('precision_recall.png')
+
+    if isinstance(algorithm, list):
+        algorithm_name = utils.get_algorithm_name(algorithm[0])
+        for fold, algo in enumerate(algorithm):
+            _plot_results(out_dir, y[fold], x[fold], algo, algorithm_name, fold=fold)
+    else:
+        algorithm_name = utils.get_algorithm_name(algorithm)
+        _plot_results(out_dir, y, x, algorithm, algorithm_name)
+
+
+def _plot_results(out_dir, y, x, algorithm, algorithm_name, fold=None):
+    """
+    Generate ROC and precision-recall plots for each class.
+
+    Args:
+        out_dir (pathlib.Path): Directory where results are saved.
+        y (numpy.ndarray): Ground truth phenotypes.
+        x (numpy.ndarray): Input values.
+        algorithm: Discrete prediction algorithm.
+        algorithm_name (str): Classifier model name.
+        fold (int): If using outer cross-validation, fold number corresponding to current data/algorithm (Default: None).
+    """
+
+    suffix = f"_fold{fold+1}" if fold is not None else ""
+    y_pred_prob = algorithm.predict_proba(x)[:,1]
+    roc_path = out_dir.joinpath(f"roc{suffix}.png")
+    precision_recall_path = out_dir.joinpath(f"precision_recall{suffix}.png")
     ROC(roc_path, y, y_pred_prob, algorithm_name)
     precision_recall_plot(precision_recall_path, y, y_pred_prob, algorithm_name)
 
@@ -95,26 +119,59 @@ def precision_recall_plot(plot_path, y, y_pred_prob, algorithm_name):
           f"the best performing algorithm.")
 
 
-def export_prediction_data(out_dir, y, y_pred_prob, ids, y_train=None, y_train_pred=None, ids_train=None):
+### TODO: Why is this organized different from the same function in the continuous module? (pd vs np, train vs withheld, including both sets of IDs, split into functions, etc)
+def export_prediction_data(out_dir, algorithm, y, x, ids, y_train=None, x_train=None, ids_train=None):
     """
     Save probability histograms and tables with accuracy metrics.
 
     Args:
         out_dir (pathlib.Path): Directory where results are saved.
-        y (pandas.DataFrame): Ground truth phenotypes.
-        y_pred_prob (pandas.DataFrame): Predicted probabilities for each class.
+        algorithm: Discrete prediction algorithm.
+        y (pandas.DataFrame): Ground truth phenotypes for each training sample.
+        x (pandas.DataFrame): Input data for each training sample.
         ids (pandas.Series): ids for participants corresponding to the datasets.
         y_train (optional, pandas.DataFrame): Ground truth phenotypes from the training dataset (Default: None).
-        y_train_pred (optional, pandas.DataFrame): Predicted phenotypes from the training dataset (Default: None).
+        x_train (optional, pandas.DataFrame): Input data from the training dataset (Default: None).
         ids_train (optional, pandas.Series): ids for participants in the training dataset (Default: None).
     """
+
+    if isinstance(algorithm, list):
+        for fold, algo in enumerate(algorithm):
+            if y_train is not None and x_train is not None and ids_train is not None:
+                _export_prediction_data(out_dir, algo, y[fold], x[fold], ids[fold], y_train=y_train[fold], x_train=x_train[fold], ids_train=ids_train[fold], fold=fold)
+            else:
+                _export_prediction_data(out_dir, algo, y[fold], x[fold], ids[fold], y_train=None, x_train=None, ids_train=None, fold=fold)
+    else:
+        _export_prediction_data(out_dir, algorithm, y, x, ids, y_train=y_train, x_train=x_train, ids_train=ids_train)
+
+
+def _export_prediction_data(out_dir, algorithm, y, x, ids, y_train=None, x_train=None, ids_train=None, fold=None):
+    """
+    Save probability histograms and tables with accuracy metrics.
+
+    Args:
+        out_dir (pathlib.Path): Directory where results are saved.
+        y (pandas.DataFrame): Ground truth phenotypes for each training sample.
+        x (pandas.DataFrame): Input data for each training sample.
+        ids (pandas.Series): ids for participants corresponding to the datasets.
+        y_train (optional, pandas.DataFrame): Ground truth phenotypes from the training dataset (Default: None).
+        x_train (optional, pandas.DataFrame): Input data from the training dataset (Default: None).
+        ids_train (optional, pandas.Series): ids for participants in the training dataset (Default: None).
+        fold (int): If using outer cross-validation, fold number corresponding to current data/algorithm (Default: None).
+    """
+
+    suffix = f"_fold{fold+1}" if fold is not None else ""
+
+    y_pred_prob = algorithm.predict_proba(x)
+    if x_train is not None:
+        y_train_pred = algorithm.predict_proba(x_train)
 
     if y_train is not None and y_train_pred is not None and ids_train is not None:
         export_prediction_tables(
             y_train,
             y_train_pred,
             ids_train,
-            out_dir.joinpath('train_predictions.txt'),
+            out_dir.joinpath(f"train_predictions{suffix}.txt"),
             dataset="training",
         )
 
@@ -122,13 +179,33 @@ def export_prediction_data(out_dir, y, y_pred_prob, ids, y_train=None, y_train_p
         y,
         y_pred_prob,
         ids,
-        out_dir.joinpath('predictions.txt'),
+        out_dir.joinpath(f"predictions{suffix}.txt"),
     )
 
     export_prob_hist(
         df_prediction,
-        out_dir.joinpath('probabilities'),
+        out_dir.joinpath(f"probabilities{suffix}"),
     )
+
+
+def additional_sumstats(algorithm_name, y_test, x_test, algorithm, run_prefix):
+    if isinstance(y_test, list):
+        for fold, y_test_fold in enumerate(y_test):
+            y_pred_fold = algorithm[fold].predict_proba(x_test[fold])
+            _additional_sumstats(algorithm_name, y_test_fold, y_pred_fold, run_prefix, fold=fold)
+    else:
+        y_pred = algorithm.predict_proba(x_test)
+        _additional_sumstats(algorithm_name, y_test, y_pred, run_prefix)
+
+
+def _additional_sumstats(algorithm_name, y_test, y_pred, run_prefix, fold=None):
+    suffix = f"_fold{fold+1}" if fold is not None else ""
+    log_table = pd.DataFrame(
+        data=[[algorithm_name] + list(_calculate_accuracy_scores(y_test, y_pred))], 
+        columns=["Algorithm", "AUC", "Accuracy", "Balanced_Accuracy", "Log_Loss", "Sensitivity", "Specificity", "PPV", "NPV"],
+    )
+    log_outfile = run_prefix.joinpath(f"performance_metrics{suffix}.txt")
+    log_table.to_csv(log_outfile, index=False, sep="\t")
 
 
 def calculate_accuracy_scores(x, y, algorithm):

@@ -24,19 +24,32 @@ from genoml.preprocessing.munging import Munge
 def munge(
     prefix, impute_type, geno_path, pheno_path, addit_path, geno_test_path, pheno_test_path, 
     addit_test_path, skip_prune, r2, n_est, gwas_paths, p_gwas, vif_thresh, vif_iter, umap_reduce, 
-    adjust_data, adjust_normalize, target_features, confounders, confounders_test, data_type,
+    adjust_data, adjust_normalize, target_features, confounders, confounders_test, n_outer_cv, data_type,
 ):
     munger = Munge(
         prefix, impute_type, geno_path, pheno_path, addit_path, geno_test_path, pheno_test_path, 
         addit_test_path, skip_prune, r2, n_est, gwas_paths, p_gwas, vif_thresh, vif_iter, umap_reduce, 
-        adjust_data, adjust_normalize, target_features, confounders, confounders_test, data_type,
+        adjust_data, adjust_normalize, target_features, confounders, confounders_test, n_outer_cv, data_type,
     )
-    munger.create_merged_datasets()
-    munger.filter_shared_cols()
-    munger.apply_adjustments()
-    munger.feature_selection()
-    munger.filter_shared_cols()
-    munger.save_data()
+
+    if munger.n_outer_cv < 2:
+        munger.create_merged_datasets()
+        munger.filter_shared_cols()
+        munger.apply_adjustments()
+        munger.feature_selection()
+        munger.filter_shared_cols()
+        munger.save_data()
+    else:
+        munger.create_merged_datasets(n_outer_cv=munger.n_outer_cv)
+        for fold in range(1, munger.n_outer_cv+1):
+            munger.df_merged = munger.df_merged_cv_dict[fold]["train"]
+            munger.df_merged_test = munger.df_merged_cv_dict[fold]["test"]
+            
+            munger.filter_shared_cols()
+            munger.apply_adjustments(fold=fold)
+            munger.feature_selection(fold=fold)
+            munger.filter_shared_cols()
+            munger.save_data(fold=fold)
 
 
 def harmonize(

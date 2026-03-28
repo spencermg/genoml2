@@ -26,6 +26,30 @@ from genoml import utils, dependencies
 from pathlib import Path
 
 
+### Make sure this works for discrete and multiuclass too
+
+### TODO: Add parameter for random state that is applied everywhere in GenoML
+### TODO: Add option for stratifying cross-validations
+### TODO: Create variable for outer_cv instead of always checking if something is a list
+### TODO: Decide between "run_prefix" and "prefix"
+### TODO: Add stratification setting for cross validation and train/test split steps
+### TODO: Look into which data are "withheld" during training and tuning
+### TODO: Check that you get an error if you do outer_cv with test data included as well
+### TODO: Check file extensions (txt vs tsv)
+### TODO: In munging, look into difference between n_outer_cv and self.n_outer_cv
+### TODO: Get rid of convergencewarning messages in tuning step
+### TODO: If someone tries testing without munging/harmonizing a test dataset, throw an exception instead of the user getting an error message
+### TODO: If using outer CV, add VotingRegressor for the final model to take the average of each prediction
+### TODO: Why are number of samples/promoters different for my train/test and full datasets?
+### TODO: Clean up continuous utils where I generate regression plot 
+### TODO: Look into combining some of the plots/tables across folds in discrete and multiclass
+### TODO: Check if additional_sumstats is the same across all modules
+### TODO: Check all possible model classes to make sure they all work and all their hyperparam combinations are compatible with tuning
+### TODO: Test discrete and multiclass on real datasets to make sure they actually work well
+
+
+
+
 ### TODO: Add variables for loading intermediate results that were not generated within GenoML.
 ### TODO: Add ability to load confounders in same file with addit.
 
@@ -119,7 +143,7 @@ def handle_continuous_supervised_munge():
     handle_endpoints("genoml continuous supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
                       "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "umap_reduce",
-                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test"],
+                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test", "n_outer_cv"],
                       functools.partial(preprocessing.munge, data_type="c"), 3)
 
 
@@ -138,7 +162,7 @@ def handle_continuous_supervised_train():
 
 def handle_continuous_supervised_tune():
     handle_endpoints("genoml continuous supervised tune",
-                     ["prefix", "metric_tune", "max_tune", "n_cv"],
+                     ["prefix", "metric_tune", "max_tune", "n_inner_cv"],
                      continuous_supervised.tune, 3)
 
 
@@ -152,7 +176,7 @@ def handle_discrete_supervised_munge():
     handle_endpoints("genoml discrete supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
                       "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "umap_reduce",
-                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test"],
+                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test", "n_outer_cv"],
                       functools.partial(preprocessing.munge, data_type="d"), 3)
 
               
@@ -170,7 +194,7 @@ def handle_discrete_supervised_train():
 
 def handle_discrete_supervised_tune():
     handle_endpoints("genoml discrete supervised tune",
-                     ["prefix", "metric_tune", "max_tune", "n_cv"],
+                     ["prefix", "metric_tune", "max_tune", "n_inner_cv"],
                      discrete_supervised.tune, 3)
 
 
@@ -184,7 +208,7 @@ def handle_multiclass_supervised_munge():
     handle_endpoints("genoml multiclass supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
                       "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "umap_reduce",
-                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test"],
+                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test", "n_outer_cv"],
                       functools.partial(preprocessing.munge, data_type="d"), 3)
 
 
@@ -202,7 +226,7 @@ def handle_multiclass_supervised_train():
 
 def handle_multiclass_supervised_tune():
     handle_endpoints("genoml multiclass supervised tune",
-                     ["prefix", "metric_tune", "max_tune", "n_cv"],
+                     ["prefix", "metric_tune", "max_tune", "n_inner_cv"],
                      multiclass_supervised.tune, 3)
 
 
@@ -303,13 +327,23 @@ def add_default_flag(parser, flag_name):
                  'tuning parameters [default: 50].',
         )
 
-    elif flag_name == "n_cv":
+    elif flag_name == "n_inner_cv":
         parser.add_argument(
-            '--n_cv', 
+            '--n_inner_cv', 
             type=int, 
             default=5,
-            help='Number of cross validations: (integer likely greater than 3). Here we set the number of '
-                 'cross-validation runs for the algorithms [default: 5].')
+            help='Number of inner cross validations: (integer likely greater than 3) during tuning. '
+                 'Here we set the number of cross-validation runs for the algorithms [default: 5].',
+        )
+
+    elif flag_name == "n_outer_cv":
+        parser.add_argument(
+            '--n_outer_cv', 
+            type=int, 
+            default=0,
+            help='Number of outer cross validations: (integer likely greater than 3) for the pipeline. '
+                 'Here we set the number of cross-validation runs for the algorithms [default: 0].',
+        )
 
     elif flag_name == "train_split":
         parser.add_argument(
@@ -317,7 +351,8 @@ def add_default_flag(parser, flag_name):
             type=float, 
             default=70,
             help='Percent of samples to use for model fitting, with the rest used as withheld validation '
-                 'samples. Numbers below 1 will be treated as fractions [default: 70].')
+                 'samples. Numbers below 1 will be treated as fractions [default: 70].',
+        )
 
     elif flag_name == "test_geno_prefix":
         parser.add_argument(

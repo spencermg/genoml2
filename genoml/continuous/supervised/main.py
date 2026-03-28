@@ -18,8 +18,8 @@ from genoml.continuous.supervised.training import Train
 from genoml.continuous.supervised.tuning import Tune
 
 
-def train(prefix, metric_max):
-    trainer = Train(prefix, metric_max)
+def train(prefix, metric_max, train_split):
+    trainer = Train(prefix, metric_max, train_split)
     trainer.compete()
     trainer.select_best_algorithm()
     trainer.export_model()

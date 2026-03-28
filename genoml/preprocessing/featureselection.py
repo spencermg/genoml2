@@ -22,7 +22,7 @@ from statsmodels.stats import outliers_influence
 
 ### TODO: Migrate print statements to use utils.DescriptionLoader.print
 class FeatureSelection:
-    def __init__(self, prefix, df, data_type, n_est, vif_iter, vif_threshold, chunk_size):
+    def __init__(self, prefix, df, data_type, n_est, vif_iter, vif_threshold, chunk_size, fold=None):
         df.dropna(axis=1, inplace=True)
         self.prefix = prefix
         self.n_est = n_est
@@ -34,6 +34,8 @@ class FeatureSelection:
         self.vif_iter = vif_iter
         self.vif_threshold = vif_threshold
         self.chunk_size = chunk_size
+        self.fold = fold
+
         self.df_list = None
 
     def select_features(self):
@@ -58,8 +60,9 @@ class FeatureSelection:
             zip(self.x.columns, clf.feature_importances_),
             columns=["Feature_Name", "Score"]
         ).sort_values(by=['Score'], ascending=False)
+        feature_importance_path = f"approx_feature_importance{f'_fold{fold}' if fold is not None else ''}.txt"
         df_feature_scores.to_csv(
-            self.prefix.joinpath("approx_feature_importance.txt"), 
+            self.prefix.joinpath(feature_importance_path), 
             index=False, 
             sep="\t",
         )
@@ -75,7 +78,8 @@ class FeatureSelection:
 
         ### TODO: This should be after VIF
         # Save features
-        with open(self.prefix.joinpath("list_features.txt"), 'w') as f:
+        list_features_path = f"list_features{f'_fold{fold}' if fold is not None else ''}.txt"
+        with open(self.prefix.joinpath(list_features_path), 'w') as f:
             for feature in self.df.columns.values.tolist():
                 f.write(feature + "\n")
 

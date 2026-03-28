@@ -20,6 +20,7 @@ import sys
 from genoml import utils
 from pathlib import Path
 from sklearn import metrics
+from sklearn.model_selection import StratifiedKFold
 from skopt.space import Categorical
 
 
@@ -34,8 +35,29 @@ class Tune:
             cv_count=cv_count,
         )
 
-        df = utils.read_munged_data(run_prefix, "train")
-        model_path = Path(run_prefix).joinpath('model.joblib')
+        ### TODO: Add condition for if nothing is there, in which case they have not munged
+        if Path(run_prefix).joinpath("Munge").joinpath(f"train_dataset.h5").exists():
+            df_tune = utils.read_munged_data(Path(run_prefix).joinpath("Munge").joinpath(f"train_dataset.h5"))
+            model_path = Path(run_prefix).joinpath("model.joblib")
+            self._y_tune = df_tune.PHENO
+            self._ids_tune = df_tune.ID
+            self._x_tune = df_tune.drop(columns=["PHENO", "ID"])
+            self._algorithm = joblib.load(model_path)
+            algorithm_name = utils.get_algorithm_name(self._algorithm)
+        elif Path(run_prefix).joinpath("Munge").joinpath(f"train_dataset_fold1.h5").exists():
+            self._y_tune = []
+            self._ids_tune = []
+            self._x_tune = []
+            self._algorithm = []
+            train_datasets = [f for f in Path(run_prefix).joinpath("Munge").iterdir() if f.is_file() and f.name.startswith("train_dataset")]
+            for fold, train_dataset in enumerate(train_datasets):
+                df_tune = utils.read_munged_data(train_dataset)
+                model_path = Path(run_prefix).joinpath(f"model_fold{fold+1}.joblib")
+                self._y_tune.append(df_tune.PHENO)
+                self._ids_tune.append(df_tune.ID)
+                self._x_tune.append(df_tune.drop(columns=["PHENO", "ID"]))
+                self._algorithm.append(joblib.load(model_path))
+            algorithm_name = utils.get_algorithm_name(self._algorithm[0])
 
         dict_hyperparams = utils.get_tuning_hyperparams("multiclass")
 
@@ -53,17 +75,9 @@ class Tune:
         if not self._run_prefix.is_dir():
             self._run_prefix.mkdir()
         self._max_iter = max_iter
-        self._cv_count = cv_count
-        self._y_tune = df.PHENO
-        self._ids_tune = df.ID
-        self._x_tune = df.drop(columns=['PHENO', 'ID'])
-        self._algorithm = joblib.load(model_path)
+        self._cv = StratifiedKFold(n_splits=cv_count, shuffle=True, random_state=3)
 
-        self._hyperparameters = dict_hyperparams[self._algorithm.__class__.__name__]
-        if self._algorithm.__class__.__name__ in ["AdaBoostClassifier", "BaggingClassifier"]:
-            self._hyperparameters.update(dict_hyperparams[self._algorithm.estimator_.__class__.__name__])
-        print(self._hyperparameters)
-
+        self._hyperparameters = dict_hyperparams[algorithm_name]
         self._cv_tuned = None
         self._cv_baseline = None
         self._cv_results = None
@@ -73,9 +87,8 @@ class Tune:
         self._num_classes = None
 
         # Communicate to the user the best identified algorithm 
-        algo_name = utils.get_algorithm_name(self._algorithm)
         print(f"From previous analyses in the training phase, we've determined that the best "
-              f"algorithm for this application is {algo_name.replace('_', 'using ')}... so "
+              f"algorithm for this application is {algorithm_name.replace('_', 'using ')}... so "
               "let's tune it up and see what gains we can make!")
 
 
@@ -88,7 +101,7 @@ class Tune:
             self._hyperparameters,
             self._scoring_metric,
             self._max_iter,
-            self._cv_count,
+            self._cv,
         )
 
 
@@ -103,37 +116,36 @@ class Tune:
 
     def summarize_tune(self):
         """ Report results for baseline and tuned models. """
-        self._cv_baseline, self._cv_tuned = utils.sumarize_tune(
+        self._cv_baseline, self._cv_tuned = utils.summarize_tune(
             self._run_prefix,
             self._algorithm, 
             self._algorithm_tuned, 
             self._x_tune, 
             self._y_tune, 
             self._scoring_metric, 
-            self._cv_count, 
+            self._cv, 
         )
 
 
     def compare_performance(self):
-        """ Compare fine-tuned model with baseline model. """
-        self._algorithm = next(utils.compare_tuning_performance(
+        """ Compare tuned model with baseline model. """
+        self._algorithm, _ = utils.compare_tuning_performance(
             self._run_prefix, 
             self._cv_tuned, 
             self._cv_baseline, 
             self._algorithm_tuned, 
             self._algorithm, 
-        ))
-        self._y_pred_prob = self._algorithm.predict_proba(self._x_tune)
-        self._algorithm_name = utils.get_algorithm_name(self._algorithm)
+            x = self._x_tune,
+        )
 
 
     def plot_results(self):
         """ Plot results from best-performing algorithm. """
         self._num_classes = multiclass_utils.plot_results(
             self._run_prefix,
-            pd.get_dummies(self._y_tune).values,
-            self._y_pred_prob,
-            self._algorithm_name,
+            [pd.get_dummies(y_tune).values for y_tune in self._y_tune] if isinstance(self._y_tune, list) else pd.get_dummies(self._y_tune).values, 
+            [x_tune.values for x_tune in self._x_tune] if isinstance(self._x_tune, list) else self._x_tune.values, 
+            self._algorithm,
         )
 
 
@@ -141,8 +153,9 @@ class Tune:
         """ Save results from best-performing algorithm. """
         multiclass_utils.export_prediction_data(
             self._run_prefix,
-            self._y_tune,
-            self._y_pred_prob,
+            self._algorithm,
+            [pd.get_dummies(y_tune) for y_tune in self._y_tune] if isinstance(self._y_tune, list) else pd.get_dummies(self._y_tune), 
+            self._x_tune, 
             self._ids_tune,
             self._num_classes,
         )

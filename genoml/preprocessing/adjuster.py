@@ -96,7 +96,7 @@ class Adjuster:
         return reducer
 
 
-    def adjust_confounders(self, adjustment_models=None):
+    def adjust_confounders(self, adjustment_models=None, fold=None):
         confounder_list = [f"Q('{c}')" for c in self.df_confounders.columns[1:]]
         formula_for_confounders = " + ".join(confounder_list)
         
@@ -121,7 +121,8 @@ class Adjuster:
                     adjustment_models[target]["mean"] = mean
                     adjustment_models[target]["std"] = std
                 
-                with open(self.prefix.joinpath("adjustment_models.pkl"), "wb") as file:
+                adjustment_models_path = f"adjustment_models{f'_fold{fold}' if fold is not None else ''}.pkl"
+                with open(self.prefix.joinpath(adjustment_models_path), "wb") as file:
                     pickle.dump(adjustment_models, file)
 
             else:

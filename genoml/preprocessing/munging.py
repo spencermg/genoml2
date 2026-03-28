@@ -20,6 +20,7 @@ import pickle
 import sys
 from genoml import utils, dependencies
 from genoml.preprocessing import adjuster, featureselection
+from sklearn.model_selection import KFold
 from time import time
 
 
@@ -28,7 +29,7 @@ class Munge:
     def __init__(
         self, prefix, impute_type, geno_path, pheno_path, addit_path, geno_test_path, pheno_test_path, 
         addit_test_path, skip_prune, r2, n_trees, gwas_paths, p_gwas, vif_thresh, vif_iter, umap_reduce, 
-        adjust_data, adjust_normalize, target_features, confounders, confounders_test, data_type,
+        adjust_data, adjust_normalize, target_features, confounders, confounders_test, n_outer_cv, data_type,
     ):
         self.start = time()
         utils.DescriptionLoader.print(
@@ -49,6 +50,7 @@ class Munge:
             vif_iter = vif_iter, 
             impute_type = impute_type, 
             umap_reduce = umap_reduce,
+            n_outer_cv = n_outer_cv,
         )
 
         dependencies.check_dependencies()
@@ -78,12 +80,15 @@ class Munge:
         self.confounders_test = confounders_test
         self.data_type = data_type
         self.is_munging_test_data = self.pheno_test_path is not None
+        self.n_outer_cv = n_outer_cv if not self.is_munging_test_data else 0
 
         self.df_merged = None
+        self.df_merged_test = None
+        self.df_merged_cv_dict = None
         self.features_list = None
 
 
-    def create_merged_datasets(self):
+    def create_merged_datasets(self, n_outer_cv=None):
         """ Merge phenotype, genotype, and additional data. """
         self.df_merged = preprocessing_utils.read_pheno_file(self.pheno_path, self.data_type)
         self.df_merged = preprocessing_utils.merge_addit_data(self.df_merged, self.addit_path, self.impute_type)
@@ -97,15 +102,24 @@ class Munge:
             self.df_merged_test = preprocessing_utils.merge_geno_data(
                 self.df_merged_test, self.geno_test_path, self.pheno_test_path, self.impute_type, self.prefix, self.gwas_paths, self.p_gwas, self.skip_prune, self.plink_exec, self.r2,
             )
+        
+        if n_outer_cv is not None:
+            kf = KFold(n_splits=self.n_outer_cv, shuffle=True, random_state=3)
+            self.df_merged_cv_dict = {}
+            for fold, (train_idx, test_idx) in enumerate(kf.split(self.df_merged)):
+                self.df_merged_cv_dict[fold+1] = {
+                    "train": self.df_merged.iloc[train_idx],
+                    "test": self.df_merged.iloc[test_idx]
+                }
 
 
     def filter_shared_cols(self):
         """ Initial filtering to keep only shared columns between train and test data. """
-        if self.is_munging_test_data:
+        if self.df_merged_test is not None:
             self.df_merged, self.df_merged_test = preprocessing_utils.filter_common_cols(self.df_merged, self.df_merged_test)
 
 
-    def apply_adjustments(self):
+    def apply_adjustments(self, fold=None):
         """ Adjust datasets by covariates. """
         if self.adjust_data:
             # Adjust train data
@@ -119,10 +133,10 @@ class Munge:
             )
             self.features_list = train_adjuster.targets
             umap_reducer = train_adjuster.umap_reducer("train")
-            self.df_merged, adjustment_models = train_adjuster.adjust_confounders()
+            self.df_merged, adjustment_models = train_adjuster.adjust_confounders(fold=fold)
 
             # Adjust test data if provided
-            if self.is_munging_test_data:
+            if self.df_merged_test is not None:
                 test_adjuster = adjuster.Adjuster(
                     self.prefix,
                     self.df_merged_test,
@@ -132,10 +146,10 @@ class Munge:
                     self.umap_reduce,
                 )
                 _ = test_adjuster.umap_reducer("test", reducer=umap_reducer)
-                self.df_merged_test, _ = test_adjuster.adjust_confounders(adjustment_models=adjustment_models)
+                self.df_merged_test, _ = test_adjuster.adjust_confounders(adjustment_models=adjustment_models, fold=fold)
 
     
-    def feature_selection(self):
+    def feature_selection(self, fold=None):
         """ extraTrees and VIF for to prune unnecessary features. """
         # Run the feature selection using extraTrees
         feature_selector = featureselection.FeatureSelection(
@@ -146,17 +160,18 @@ class Munge:
             self.vif_iter, 
             self.vif_thresh, 
             100,
+            fold=fold,
         )
         self.df_merged = feature_selector.select_features()
 
 
-    def save_data(self):
+    def save_data(self, fold=None):
         """ Save munged training and testing datasets """
-        outfile_h5 = self.prefix.joinpath("train_dataset.h5")
-        self.df_merged.to_hdf(outfile_h5, key='dataForML')
-        if self.is_munging_test_data:
-            outfile_h5_test = self.prefix.joinpath("test_dataset.h5")
-            self.df_merged_test.to_hdf(outfile_h5_test, key='dataForML')
+        train_h5_path = f"train_dataset{f'_fold{fold}' if fold is not None else ''}.h5"
+        self.df_merged.to_hdf(self.prefix.joinpath(train_h5_path), key='dataForML')
+        if self.df_merged_test is not None:
+            test_h5_path = f"test_dataset{f'_fold{fold}' if fold is not None else ''}.h5"
+            self.df_merged_test.to_hdf(self.prefix.joinpath(test_h5_path), key='dataForML')
 
         # Also save parameters for harmonization
         cols = self.df_merged.columns
@@ -173,12 +188,15 @@ class Munge:
             "cols" : cols,
             "avg_vals" : avg_vals,
         }
-        with open(self.prefix.joinpath("params.pkl"), "wb") as file:
+        params_path = f"params{f'_fold{fold}' if fold is not None else ''}.pkl"
+        with open(self.prefix.joinpath(params_path), "wb") as file:
             pickle.dump(params_for_harmonize, file)
 
         # Thank the user
-        print(f"Your fully munged training data can be found here: {outfile_h5}")
-        if self.pheno_test_path is not None:
-            print(f"Your fully munged testing data can be found here: {outfile_h5_test}")
-        print("Thank you for munging with GenoML!")
-        print(f"Munging took {time() - self.start} seconds")
+        ### TODO: Update file path(s) for outer CV
+        if fold is None or fold == self.n_outer_cv:
+            print(f"Your fully munged training data can be found here: {self.prefix.joinpath(train_h5_path)}")
+            if self.pheno_test_path is not None:
+                print(f"Your fully munged testing data can be found here: {self.prefix.joinpath(test_h5_path)}")
+            print("Thank you for munging with GenoML!")
+            print(f"Munging took {time() - self.start} seconds")

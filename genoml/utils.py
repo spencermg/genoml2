@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
+import copy
 import joblib
 import json
 import os
@@ -258,7 +259,7 @@ def select_best_algorithm(log_table, metric_max, algorithms):
         metrics=metrics_to_str(best_algorithm_metrics),
     )
 
-    return best_algorithm
+    return best_algorithm, best_algorithm_name
 
 
 def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
@@ -272,7 +273,7 @@ def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
         param_distributions (dict): Hyperparameters and corresponsing values to be tested.
         scoring (sklearn.metrics._scorer._Scorer): Scoring metric to evaluate accuracy.
         n_iter (int): Maximum number of iterations.
-        cv (int): Number of cross-validations.
+        cv (sklearn.model_selection (Stratified)KFold): Cross-validation generator.
     
     :return: cv_results *(dict)*: \n
         Results from hyperparameter tuning.
@@ -280,6 +281,37 @@ def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
         Tuned model.
     """
 
+    if isinstance(estimator, list):
+        cv_results = []
+        algo_tuned = []
+        for fold, estim in enumerate(estimator):
+            cv_results_fold, algo_tuned_fold = _tune_model(estim, x[fold], y[fold], param_distributions, scoring, n_iter, cv)
+            cv_results.append(cv_results_fold)
+            algo_tuned.append(algo_tuned_fold)
+    else:
+        cv_results, algo_tuned = _tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv)
+
+    return cv_results, algo_tuned
+
+
+def _tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
+    """
+    Apply randomized search to fine-tune the selected model.
+
+    Args:
+        estimator: Trained baseline model.
+        x (pandas.DataFrame): Model input features.
+        y (pandas.DataFrame): Reported output features.
+        param_distributions (dict): Hyperparameters and corresponsing values to be tested.
+        scoring (sklearn.metrics._scorer._Scorer): Scoring metric to evaluate accuracy.
+        n_iter (int): Maximum number of iterations.
+        cv (sklearn.model_selection (Stratified)KFold): Cross-validation generator.
+    
+    :return: cv_results *(dict)*: \n
+        Results from hyperparameter tuning.
+    :return: algo_tuned: \n
+        Tuned model.
+    """
     rand_search = BayesSearchCV(
         estimator = estimator,
         search_spaces = param_distributions,
@@ -294,14 +326,14 @@ def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
     with Timer() as timer:
         rand_search.fit(x, y)
     print(f"BayesSearchCV took {timer.elapsed():.2f} seconds for {n_iter:d} "
-          "candidates parameter iterations.")
+          "candidate parameter iterations.")
 
     cv_results = rand_search.cv_results_
     algo_tuned = rand_search.best_estimator_
     return cv_results, algo_tuned
 
 
-def sumarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, cv):
+def summarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, cv):
     """
     Use cross-validation to compare the tuned model to the trined 
     baseline model. 
@@ -313,13 +345,50 @@ def sumarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, cv
         x (pandas.DataFrame): Model input features.
         y (pandas.DataFrame): Reported output features.
         scoring (sklearn.metrics._scorer._Scorer): Scoring metric to evaluate accuracy.
-        cv (int): Number of cross validations.
+        cv (sklearn.model_selection (Stratified)KFold): Cross-validation generator.
 
     :return: cv_baseline *(pandas.DataFrame)*: \n
         Cross-validation results for the trained baseline model.
     :return: cv_tuned *(pandas.DataFrame)*: \n
         Cross-validation results for the tuned model.
     """
+
+    if isinstance(estimator_baseline, list):
+        cv_baseline = [] 
+        cv_tuned = []
+        for fold, estimator_baseline_fold in enumerate(estimator_baseline):
+            cv_baseline_fold, cv_tuned_fold = _summarize_tune(out_dir, estimator_baseline_fold, estimator_tune[fold], x[fold], y[fold], scoring, cv, fold=fold)
+            cv_baseline.append(cv_baseline_fold)
+            cv_tuned.append(cv_tuned_fold)
+
+    else:
+        cv_baseline, cv_tuned = _summarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, cv)
+
+    return cv_baseline, cv_tuned
+
+
+def _summarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, cv, fold=None):
+    """
+    Use cross-validation to compare the tuned model to the trined 
+    baseline model. 
+
+    Args:
+        out_dir (pathlib.Path): Path to output directory.
+        estimator_baseline: Trained baseline model.
+        estimator_tune: Tuned model.
+        x (pandas.DataFrame): Model input features.
+        y (pandas.DataFrame): Reported output features.
+        scoring (sklearn.metrics._scorer._Scorer): Scoring metric to evaluate accuracy.
+        cv (sklearn.model_selection (Stratified)KFold): Cross-validation generator.
+        fold (int): If using outer cross-validation, fold number corresponding to current data/algorithm (Default: None).
+
+    :return: cv_baseline *(pandas.DataFrame)*: \n
+        Cross-validation results for the trained baseline model.
+    :return: cv_tuned *(pandas.DataFrame)*: \n
+        Cross-validation results for the tuned model.
+    """
+
+    suffix = f"_fold{fold+1}" if fold is not None else ""
 
     cv_baseline = model_selection.cross_val_score(
         estimator = estimator_baseline, 
@@ -349,10 +418,10 @@ def sumarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, cv
         "Max_CV_Score" : [cv_baseline.max(), cv_tuned.max()],
     })
     df_cv_summary.rename(index={0: "Baseline", 1: "BestTuned"}, inplace=True)
-    log_outfile = out_dir.joinpath('cv_summary.txt')
+    log_outfile = out_dir.joinpath(f"cv_summary{suffix}.txt")
     df_cv_summary.to_csv(log_outfile, sep="\t")
 
-    print("Here is the cross-validation summary of your best tuned model hyperparameters...")
+    print(f"Here is the cross-validation summary of your best tuned model hyperparameters{f' for fold {fold+1}' if fold is not None else ''}...")
     print(f"{scoring} scores per cross-validation")
     print(cv_tuned)
     print(f"Mean cross-validation score:                        {cv_tuned.mean()}")
@@ -384,7 +453,27 @@ def report_best_tuning(out_dir, cv_results, n_top):
         n_top (int): Number of iterations to report.
     """
 
-    print("Here is a summary of the top 10 iterations of the hyperparameter tuning...")
+    if isinstance(cv_results, list):
+        for fold, cv_results_fold in enumerate(cv_results):
+            _report_best_tuning(out_dir, cv_results_fold, n_top, fold=fold)
+    else:
+        _report_best_tuning(out_dir, cv_results, n_top)
+
+
+def _report_best_tuning(out_dir, cv_results, n_top, fold=None):
+    """
+    Find the top-performing tuning iterations and save those to a table.
+
+    Args:
+        out_dir (pathlib.Path): Path to output directory.
+        cv_results (dict): Results from hyperparameter tuning.
+        n_top (int): Number of iterations to report.
+        fold (int): If using outer cross-validation, fold number corresponding to current data/algorithm (Default: None).
+    """
+
+    suffix = f"_fold{fold+1}" if fold is not None else ""
+
+    print(f"Here is a summary of the top 10 iterations of the hyperparameter tuning{f' for fold {fold+1}' if fold is not None else ''}...")
     cv_results = pd.DataFrame(cv_results)
     cv_results.sort_values(by='rank_test_score', ascending=True, inplace=True)
     cv_results = cv_results.iloc[:n_top,:]
@@ -394,14 +483,14 @@ def report_best_tuning(out_dir, cv_results, n_top):
         print(f"Mean Validation Score: {current_iteration['mean_test_score']:.3f} (std: {current_iteration['std_test_score']:.3f})")
         print(f"Parameters: {current_iteration['params']}")
         print("")
-    log_outfile = out_dir.joinpath('tuning_summary.txt')
+    log_outfile = out_dir.joinpath(f"tuning_summary{suffix}.txt")
     cv_results.to_csv(log_outfile, index=False, sep="\t")
     print(f"We are exporting a summary table of the top {n_top} iterations of the hyperparameter tuning step and its parameters here {log_outfile}.")
 
 
 def compare_tuning_performance(out_dir, cv_tuned, cv_baseline, algo_tuned, algo_baseline, x=None):
     """
-    Determine whether the fine-tuned model outperformed the baseline model.
+    Determine whether the tuned model outperformed the baseline model.
 
     Args:
         out_dir (pathlib.Path): Path to output directory.
@@ -412,7 +501,39 @@ def compare_tuning_performance(out_dir, cv_tuned, cv_baseline, algo_tuned, algo_
         x (pandas.DataFrame, optional): Model input features (Default: None).
     
     :return: algorithm: \n
-        Better-perorming of the fine-tuned and trained baseline models.
+        Better-perorming of the tuned and trained baseline models.
+    :return: y_predicted *(numpy.ndarray)*: \n
+        Predicted outputs from the chosen model.
+    """
+
+    if isinstance(cv_tuned, list):
+        algorithm = []
+        y_predicted = []
+        for fold, cv_tuned_fold in enumerate(cv_tuned):
+            algorithm_fold, y_predicted_fold = _compare_tuning_performance(out_dir, cv_tuned[fold], cv_baseline[fold], algo_tuned[fold], algo_baseline[fold], x=x[fold], fold=fold)
+            algorithm.append(algorithm_fold)
+            y_predicted.append(y_predicted_fold)
+    else:
+        algorithm, y_predicted = _compare_tuning_performance(out_dir, cv_tuned, cv_baseline, algo_tuned, algo_baseline, x=x)
+
+    return algorithm, y_predicted
+
+
+def _compare_tuning_performance(out_dir, cv_tuned, cv_baseline, algo_tuned, algo_baseline, x=None, fold=None):
+    """
+    Determine whether the tuned model outperformed the baseline model.
+
+    Args:
+        out_dir (pathlib.Path): Path to output directory.
+        cv_tuned (pandas.DataFrame): Cross-validation results for the tuned model.
+        cv_baseline (pandas.DataFrame): Cross-validation results for the trained baseline model.
+        algo_tuned: Tuned model.
+        algo_baseline: Trained baseline model.
+        x (pandas.DataFrame, optional): Model input features (Default: None).
+        fold (int): If using outer cross-validation, fold number corresponding to current data/algorithm (Default: None).
+    
+    :return: algorithm: \n
+        Better-perorming of the tuned and trained baseline models.
     :return: y_predicted *(numpy.ndarray)*: \n
         Predicted outputs from the chosen model.
     """
@@ -434,14 +555,16 @@ def compare_tuning_performance(out_dir, cv_tuned, cv_baseline, algo_tuned, algo_
         algorithm = algo_tuned
         yield algorithm
 
-    export_model(out_dir.parent, algorithm)
+    export_model(out_dir.parent, algorithm, fold=fold)
 
+    y_predicted = None
     if x is not None:
         y_predicted = algorithm.predict(x)
-        yield y_predicted
+    yield y_predicted
 
 
-def read_munged_data(out_dir, dataset_type):
+### TODO: Make sure arguments are updated everywhere
+def read_munged_data(file_path):
     """
     Read munged hdf5 file to pandas
 
@@ -452,12 +575,11 @@ def read_munged_data(out_dir, dataset_type):
         Munged dataset.
     """
 
-    infile_h5 = Path(out_dir).joinpath("Munge").joinpath(f"{dataset_type}_dataset.h5")
     with DescriptionLoader.context(
         "read_munge", 
-        path=infile_h5,
+        path=file_path,
     ):
-        df = pd.read_hdf(infile_h5, key="dataForML")
+        df = pd.read_hdf(file_path, key="dataForML")
 
     DescriptionLoader.print(
         "data_summary", 
@@ -467,16 +589,30 @@ def read_munged_data(out_dir, dataset_type):
     return df
 
 
-def export_model(out_dir, algorithm):
+def export_model(out_dir, algorithm, fold=None):
     """
     Export a fitted algorithm to a readable file.
 
     Args:
         out_dir (pathlib.Path): Path to output directory.
         algorithm: Fitted algorithm being exported.
+        fold (int): If using outer cross-validation, fold number corresponding to current data/algorithm (Default: None).
     """
 
-    output_path = out_dir.joinpath('model.joblib')
+    if isinstance(algorithm, list):
+        for fold, algo in enumerate(algorithm):
+            output_path = out_dir.joinpath(f"model_fold{fold+1}.joblib")
+            with DescriptionLoader.context(
+                "export_model",
+                output_path=output_path,
+            ):
+                joblib.dump(algo, output_path)
+        return
+
+    if fold is not None:
+        output_path = out_dir.joinpath(f"model_fold{fold+1}.joblib")
+    else:
+        output_path = out_dir.joinpath("model.joblib")
     with DescriptionLoader.context(
         "export_model",
         output_path=output_path,
@@ -484,6 +620,7 @@ def export_model(out_dir, algorithm):
         joblib.dump(algorithm, output_path)
 
 
+### TODO: Check whether averaging is best vs any other metric
 @DescriptionLoader.function_description("utils/training/compete")
 def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, column_names, calculate_accuracy_scores):
     """
@@ -504,27 +641,29 @@ def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, colu
     """
 
     log_table = []
+    trained_algorithms = dict()
 
     for algorithm_name, algorithm in algorithms.items():
         with DescriptionLoader.context(
             "utils/training/fit_algorithms/compete/algorithm",
             name=algorithm_name,
         ):
-            with Timer() as timer:
-                algorithm.fit(x_train, y_train)
-
-            row = [algorithm_name, timer.elapsed()] + list(calculate_accuracy_scores(x_valid, y_valid, algorithm))
-
-            results_str = metrics_to_str(dict(zip(column_names, row)))
-            with DescriptionLoader.context(
-                "utils/training/fit_algorithms/compete/algorithm/results",
-                name=algorithm_name, 
-                results=results_str,
-            ):
-                log_table.append(row)
+            trained_algorithms[algorithm_name] = []
+            if isinstance(x_train, list):
+                algorithm_log_table = []
+                for x_train_fold, y_train_fold, x_valid_fold, y_valid_fold in zip(x_train, y_train, x_valid, y_valid):
+                    algorithm_log, trained_algorithm = _fit_algorithm(algorithm, algorithm_name, x_train_fold, y_train_fold, x_valid_fold, y_valid_fold, column_names, calculate_accuracy_scores)
+                    algorithm_log_table.append(algorithm_log)
+                    trained_algorithms[algorithm_name].append(trained_algorithm)
+                algorithm_log_table = [algorithm_log_table[0][0]] + [sum(values) / len(values) for values in zip(*(lst[1:] for lst in algorithm_log_table))]
+                log_table.append(algorithm_log_table)
+            else:
+                algorithm_log, trained_algorithm = _fit_algorithm(algorithm, algorithm_name, x_train, y_train, x_valid, y_valid, column_names, calculate_accuracy_scores)
+                log_table.append(algorithm_log)
+                trained_algorithms[algorithm_name] = trained_algorithm
 
     log_table = pd.DataFrame(data=log_table, columns=column_names)
-    output_path = out_dir.joinpath('withheld_performance_metrics.txt')
+    output_path = out_dir.joinpath('withheld_performance_metrics.tsv')
     with DescriptionLoader.context(
         "utils/training/fit_algorithms/compete/save_algorithm_results",
         output_path=output_path,
@@ -532,7 +671,7 @@ def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, colu
     ):
         log_table.to_csv(output_path, index=False, sep="\t")
 
-    return log_table
+    return log_table, trained_algorithms
 
 
 def get_algorithm_name(algorithm):
@@ -732,7 +871,7 @@ def get_tuning_hyperparams(module):
         dict_hyperparams["LogisticRegression"] = {
             "penalty": Categorical(["l1", "l2"]),
             "C": Integer(1e0, 1e1),
-            "solver": Categorical(["lbfgs", "liblinear", "newton-cg", "newton-cholesky", "sag", "saga"]),
+            "solver": Categorical(["liblinear", "saga"]),
             "random_state": Categorical([3]),
         }
         dict_hyperparams["XGBClassifier"] = {
@@ -743,6 +882,7 @@ def get_tuning_hyperparams(module):
             "subsample": Real(0.5, 1.0),
             "colsample_bytree": Real(0.5, 1.0),
             "min_child_weight": Integer(1, 10),
+            "objective": Categorical(["binary:logistic"]),
             "random_state": Categorical([3]),
         }
 
@@ -750,7 +890,7 @@ def get_tuning_hyperparams(module):
         dict_hyperparams["LogisticRegression"] = {
             "penalty": Categorical(["l1", "l2"]),
             "C": Integer(1e0, 1e1),
-            "solver": Categorical(["lbfgs", "newton-cg", "newton-cholesky", "sag", "saga"]),
+            "solver": Categorical(["saga"]),
             "random_state": Categorical([3]),
         }
         dict_hyperparams["XGBClassifier"] = {
@@ -766,3 +906,36 @@ def get_tuning_hyperparams(module):
         }
     
     return dict_hyperparams
+
+
+def _fit_algorithm(algorithm, algorithm_name, x_train, y_train, x_valid, y_valid, column_names, calculate_accuracy_scores):
+    with Timer() as timer:
+        algorithm = copy.deepcopy(algorithm)
+        algorithm.fit(x_train, y_train)
+
+    row = [algorithm_name, timer.elapsed()] + list(calculate_accuracy_scores(x_valid, y_valid, algorithm))
+
+    results_str = metrics_to_str(dict(zip(column_names, row)))
+    DescriptionLoader.print(
+        "utils/training/fit_algorithms/compete/algorithm/results",
+        name=algorithm_name, 
+        results=results_str,
+    )
+        
+    return row, algorithm
+
+
+def train_valid_split(df, train_split):
+    if train_split > 1:
+        train_split = train_split / 100
+
+    y = df.PHENO
+    x = df.drop(columns=['PHENO'])
+    x_train, x_valid, y_train, y_valid = model_selection.train_test_split(
+        x, 
+        y, 
+        test_size=1-train_split, 
+        random_state=3,
+    )
+
+    return x_train, x_valid, y_train, y_valid

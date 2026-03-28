@@ -18,8 +18,8 @@ from genoml.multiclass.supervised.training import Train
 from genoml.multiclass.supervised.tuning import Tune
 
 
-def train(prefix, metric_max):
-    trainer = Train(prefix, metric_max)
+def train(prefix, metric_max, train_split):
+    trainer = Train(prefix, metric_max, train_split)
     trainer.compete()
     trainer.select_best_algorithm()
     trainer.export_model()

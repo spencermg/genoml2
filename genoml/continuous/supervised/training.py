@@ -18,7 +18,6 @@ from genoml import utils
 from genoml.continuous import utils as continuous_utils
 from genoml.models import get_candidate_algorithms
 from pathlib import Path
-from sklearn import model_selection
 
 
 class Train:
@@ -31,19 +30,33 @@ class Train:
             metric_max=metric_max,
         )
 
-        df = utils.read_munged_data(prefix, "train")
-
-        if train_split > 1:
-            train_split = train_split / 100
-
-        y = df.PHENO
-        x = df.drop(columns=['PHENO'])
-        x_train, x_valid, y_train, y_valid = model_selection.train_test_split(
-            x, 
-            y, 
-            test_size=1-train_split, 
-            random_state=42,
-        )
+        ### TODO: Add condition for if nothing is there, in which case they have not munged
+        if Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5").exists():
+            df_train = utils.read_munged_data(Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5"))
+            x_train, x_valid, y_train, y_valid = utils.train_valid_split(df_train, train_split)
+            self._x_train = x_train.drop(columns=["ID"])
+            self._x_valid = x_valid.drop(columns=["ID"])
+            self._ids_train = x_train.ID
+            self._ids_valid = x_valid.ID
+            self._y_train = y_train
+            self._y_valid = y_valid
+        elif Path(prefix).joinpath("Munge").joinpath(f"train_dataset_fold1.h5").exists():
+            self._x_train = []
+            self._x_valid = []
+            self._y_train = []
+            self._y_valid = []
+            self._ids_train = []
+            self._ids_valid = []
+            train_datasets = [f for f in Path(prefix).joinpath("Munge").iterdir() if f.is_file() and f.name.startswith("train_dataset")]
+            for train_dataset in train_datasets:
+                df_train = utils.read_munged_data(train_dataset)
+                x_train, x_valid, y_train, y_valid = utils.train_valid_split(df_train, train_split)
+                self._x_train.append(x_train.drop(columns=["ID"]))
+                self._x_valid.append(x_valid.drop(columns=["ID"]))
+                self._y_train.append(y_train.drop(columns=["ID"]))
+                self._y_valid.append(y_valid.drop(columns=["ID"]))
+                self._ids_train.append(x_train.ID)
+                self._ids_valid.append(x_valid.ID)
 
         candidate_algorithms = get_candidate_algorithms("continuous_supervised")
         
@@ -58,12 +71,6 @@ class Train:
         self._run_prefix = Path(prefix).joinpath("Train")
         if not self._run_prefix.is_dir():
             self._run_prefix.mkdir()
-        self._ids_train = x_train.ID
-        self._ids_valid = x_valid.ID
-        self._x_train = x_train.drop(columns=['ID'])
-        self._x_valid = x_valid.drop(columns=['ID'])
-        self._y_train = y_train
-        self._y_valid = y_valid
         self._algorithms = {algorithm.__class__.__name__: algorithm for algorithm in candidate_algorithms}
         self._metric_max = metric_max
         self._best_algorithm = None
@@ -72,7 +79,7 @@ class Train:
 
     def compete(self):
         """ Compete the algorithms. """
-        self._log_table = utils.fit_algorithms(
+        self._log_table, self._algorithms = utils.fit_algorithms(
             self._run_prefix, 
             self._algorithms, 
             self._x_train, 
@@ -86,13 +93,13 @@ class Train:
 
     def select_best_algorithm(self):
         """ Determine the best-performing algorithm. """
-        self._best_algorithm = utils.select_best_algorithm(
+        self._best_algorithm, best_algorithm_name = utils.select_best_algorithm(
             self._log_table, 
             self._metric_max, 
             self._algorithms,
         )
         with open(self._run_prefix.parent.joinpath("algorithm.txt"), "w") as file:
-            file.write(self._best_algorithm.__class__.__name__)
+            file.write(best_algorithm_name)
 
 
     def export_model(self):
@@ -109,8 +116,10 @@ class Train:
             self._run_prefix, 
             self._ids_train, 
             "training",
+            self._best_algorithm,
             self._y_train, 
-            self._best_algorithm.predict(self._x_train), 
+            self._x_train, 
             y_withheld = self._y_valid, 
-            y_withheld_predicted = self._best_algorithm.predict(self._x_valid),
+            x_withheld = self._x_valid,
+            ids_withheld = self._ids_valid,
         )
