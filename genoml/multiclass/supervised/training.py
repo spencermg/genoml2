@@ -24,7 +24,7 @@ from sklearn import model_selection
 
 class Train:
     @utils.DescriptionLoader.function_description("info", cmd="Multiclass Supervised Training")
-    def __init__(self, prefix, metric_max, train_split):
+    def __init__(self, prefix, metric_max, train_split, random_state):
         utils.DescriptionLoader.print(
             "training/info",
             python_version=sys.version,
@@ -35,7 +35,7 @@ class Train:
         ### TODO: Add condition for if nothing is there, in which case they have not munged
         if Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5").exists():
             df_train = utils.read_munged_data(Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5"))
-            x_train, x_valid, y_train, y_valid = utils.train_valid_split(df_train, train_split)
+            x_train, x_valid, y_train, y_valid = utils.train_valid_split(df_train, train_split, random_state)
             self._x_train = x_train.drop(columns=["ID"])
             self._x_valid = x_valid.drop(columns=["ID"])
             self._y_train = y_train
@@ -52,7 +52,7 @@ class Train:
             train_datasets = [f for f in Path(prefix).joinpath("Munge").iterdir() if f.is_file() and f.name.startswith("train_dataset")]
             for train_dataset in train_datasets:
                 df_train = utils.read_munged_data(train_dataset)
-                x_train, x_valid, y_train, y_valid = utils.train_valid_split(df_train, train_split)
+                x_train, x_valid, y_train, y_valid = utils.train_valid_split(df_train, train_split, random_state)
                 self._x_train.append(x_train.drop(columns=["ID"]))
                 self._x_valid.append(x_valid.drop(columns=["ID"]))
                 self._y_train.append(y_train.drop(columns=["ID"]))
@@ -60,7 +60,7 @@ class Train:
                 self._ids_train.append(x_train.ID)
                 self._ids_valid.append(x_valid.ID)
 
-        candidate_algorithms = get_candidate_algorithms("discrete_supervised")
+        candidate_algorithms = get_candidate_algorithms("discrete_supervised", random_state)
 
         self._column_names = [
             "Algorithm",

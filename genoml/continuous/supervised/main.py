@@ -18,8 +18,8 @@ from genoml.continuous.supervised.training import Train
 from genoml.continuous.supervised.tuning import Tune
 
 
-def train(prefix, metric_max, train_split):
-    trainer = Train(prefix, metric_max, train_split)
+def train(prefix, metric_max, train_split, random_state):
+    trainer = Train(prefix, metric_max, train_split, random_state)
     trainer.compete()
     trainer.select_best_algorithm()
     trainer.export_model()
@@ -27,8 +27,8 @@ def train(prefix, metric_max, train_split):
 
 
 ### TODO: Add variables for loading old results
-def tune(prefix, metric_tune, max_iter, cv_count):
-    tuner = Tune(prefix, metric_tune, max_iter, cv_count)
+def tune(prefix, metric_tune, max_iter, cv_count, random_state):
+    tuner = Tune(prefix, metric_tune, max_iter, cv_count, random_state)
     tuner.tune_model()
     tuner.report_tune()
     tuner.summarize_tune()

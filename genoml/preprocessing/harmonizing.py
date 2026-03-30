@@ -24,7 +24,7 @@ from genoml.preprocessing import adjuster
 
 class Harmonize:
     @utils.DescriptionLoader.function_description("info", cmd="Harmonizing")
-    def __init__(self, prefix, geno_path, pheno_path, addit_path, confounders, force_impute, data_type):
+    def __init__(self, prefix, geno_path, pheno_path, addit_path, confounders, force_impute, random_state, data_type):
         # Create subdirectory where all munging-related files will be saved
         self.prefix = utils.create_results_dir(prefix, "Munge")
 
@@ -32,6 +32,7 @@ class Harmonize:
         self.confounders = confounders
         self.data_type = data_type
         self.force_impute = force_impute
+        self._random_state = random_state
         with open(self.prefix.joinpath("params.pkl"), "rb") as file:
             params = pickle.load(file)
         self.adjust_normalize = params["adjust_normalize"]
@@ -146,6 +147,7 @@ class Harmonize:
                 self.confounders,
                 self.adjust_normalize,
                 self.umap_reducer is not None,
+                self._random_state,
                 force_impute=self.force_impute,
             )
             _ = harmonize_adjuster.umap_reducer("harmonize", reducer=self.umap_reducer)

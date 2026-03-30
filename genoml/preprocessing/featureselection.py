@@ -22,7 +22,7 @@ from statsmodels.stats import outliers_influence
 
 ### TODO: Migrate print statements to use utils.DescriptionLoader.print
 class FeatureSelection:
-    def __init__(self, prefix, df, data_type, n_est, vif_iter, vif_threshold, chunk_size, fold=None):
+    def __init__(self, prefix, df, data_type, n_est, vif_iter, vif_threshold, chunk_size, random_state, fold=None):
         df.dropna(axis=1, inplace=True)
         self.prefix = prefix
         self.n_est = n_est
@@ -34,6 +34,7 @@ class FeatureSelection:
         self.vif_iter = vif_iter
         self.vif_threshold = vif_threshold
         self.chunk_size = chunk_size
+        self._random_state = random_state
         self.fold = fold
 
         self.df_list = None
@@ -90,7 +91,7 @@ class FeatureSelection:
 
         ### TODO: Should we sample more than this? And/or sample within each iteration?
         print("Sampling 100 rows at random to reduce memory overhead...")
-        df_cleaned = self.df.sample(n=100, random_state=42).copy().reset_index()
+        df_cleaned = self.df.sample(n=100, random_state=self._random_state).copy().reset_index()
 
         print("Dropping columns that are not features...")
         df_cleaned.drop(columns=["index", "PHENO", "ID"], inplace=True)
@@ -100,7 +101,7 @@ class FeatureSelection:
         for iteration in range(self.vif_iter):
             print(f"\n\nIteration {iteration + 1}\n\n")
             print("Shuffling columns...")
-            df_cleaned = df_cleaned.sample(frac=1, axis=1, random_state=42)
+            df_cleaned = df_cleaned.sample(frac=1, axis=1, random_state=self._random_state)
 
             print("Generating chunked, randomized dataframes...")
             self.df_list = []

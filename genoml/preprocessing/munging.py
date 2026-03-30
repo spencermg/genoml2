@@ -29,7 +29,7 @@ class Munge:
     def __init__(
         self, prefix, impute_type, geno_path, pheno_path, addit_path, geno_test_path, pheno_test_path, 
         addit_test_path, skip_prune, r2, n_trees, gwas_paths, p_gwas, vif_thresh, vif_iter, umap_reduce, 
-        adjust_data, adjust_normalize, target_features, confounders, confounders_test, n_outer_cv, data_type,
+        adjust_data, adjust_normalize, target_features, confounders, confounders_test, n_outer_cv, random_state, data_type,
     ):
         self.start = time()
         utils.DescriptionLoader.print(
@@ -51,6 +51,7 @@ class Munge:
             impute_type = impute_type, 
             umap_reduce = umap_reduce,
             n_outer_cv = n_outer_cv,
+            random_state = random_state,
         )
 
         dependencies.check_dependencies()
@@ -81,6 +82,7 @@ class Munge:
         self.data_type = data_type
         self.is_munging_test_data = self.pheno_test_path is not None
         self.n_outer_cv = n_outer_cv if not self.is_munging_test_data else 0
+        self._random_state = random_state
 
         self.df_merged = None
         self.df_merged_test = None
@@ -104,7 +106,7 @@ class Munge:
             )
         
         if n_outer_cv is not None:
-            kf = KFold(n_splits=self.n_outer_cv, shuffle=True, random_state=3)
+            kf = KFold(n_splits=self.n_outer_cv, shuffle=True, random_state=self._random_state)
             self.df_merged_cv_dict = {}
             for fold, (train_idx, test_idx) in enumerate(kf.split(self.df_merged)):
                 self.df_merged_cv_dict[fold+1] = {
@@ -130,6 +132,7 @@ class Munge:
                 self.confounders,
                 self.adjust_normalize,
                 self.umap_reduce,
+                self._random_state,
             )
             self.features_list = train_adjuster.targets
             umap_reducer = train_adjuster.umap_reducer("train")
@@ -160,6 +163,7 @@ class Munge:
             self.vif_iter, 
             self.vif_thresh, 
             100,
+            self._random_state,
             fold=fold,
         )
         self.df_merged = feature_selector.select_features()

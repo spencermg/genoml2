@@ -143,26 +143,27 @@ def handle_continuous_supervised_munge():
     handle_endpoints("genoml continuous supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
                       "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "umap_reduce",
-                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test", "n_outer_cv"],
+                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test", 
+                      "n_outer_cv", "random_state"],
                       functools.partial(preprocessing.munge, data_type="c"), 3)
 
 
 def handle_continuous_supervised_harmonize():
     ### TODO: Allow users to harmonize from a different directory than where the training Munge data are -- define two different prefixes
     handle_endpoints("genoml continuous supervised harmonize",
-                     ["prefix", "geno", "pheno", "addit", "confounders", "force_impute"],
+                     ["prefix", "geno", "pheno", "addit", "confounders", "force_impute", "random_state"],
                      functools.partial(preprocessing.harmonize, data_type="c"), 3)
 
 
 def handle_continuous_supervised_train():
     handle_endpoints("genoml continuous supervised train",
-                     ["prefix", "metric_max", "train_split"],
+                     ["prefix", "metric_max", "train_split", "random_state"],
                      continuous_supervised.train, 3)
 
 
 def handle_continuous_supervised_tune():
     handle_endpoints("genoml continuous supervised tune",
-                     ["prefix", "metric_tune", "max_tune", "n_inner_cv"],
+                     ["prefix", "metric_tune", "max_tune", "n_inner_cv", "random_state"],
                      continuous_supervised.tune, 3)
 
 
@@ -176,25 +177,26 @@ def handle_discrete_supervised_munge():
     handle_endpoints("genoml discrete supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
                       "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "umap_reduce",
-                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test", "n_outer_cv"],
+                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test", 
+                      "n_outer_cv", "random_state"],
                       functools.partial(preprocessing.munge, data_type="d"), 3)
 
               
 def handle_discrete_supervised_harmonize():       
     handle_endpoints("genoml discrete supervised harmonize",
-                     ["prefix", "geno", "pheno", "addit", "confounders", "force_impute"],
+                     ["prefix", "geno", "pheno", "addit", "confounders", "force_impute", "random_state"],
                      functools.partial(preprocessing.harmonize, data_type="d"), 3)
 
 
 def handle_discrete_supervised_train():
     handle_endpoints("genoml discrete supervised train",
-                     ["prefix", "metric_max", "train_split"],
+                     ["prefix", "metric_max", "train_split", "random_state"],
                      discrete_supervised.train, 3)
 
 
 def handle_discrete_supervised_tune():
     handle_endpoints("genoml discrete supervised tune",
-                     ["prefix", "metric_tune", "max_tune", "n_inner_cv"],
+                     ["prefix", "metric_tune", "max_tune", "n_inner_cv", "random_state"],
                      discrete_supervised.tune, 3)
 
 
@@ -208,25 +210,26 @@ def handle_multiclass_supervised_munge():
     handle_endpoints("genoml multiclass supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
                       "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "umap_reduce",
-                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test", "n_outer_cv"],
+                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test", 
+                      "n_outer_cv", "random_state"],
                       functools.partial(preprocessing.munge, data_type="d"), 3)
 
 
 def handle_multiclass_supervised_harmonize():
     handle_endpoints("genoml multiclass supervised harmonize",
-                     ["prefix", "geno", "pheno", "addit", "confounders", "force_impute"],
+                     ["prefix", "geno", "pheno", "addit", "confounders", "force_impute", "random_state"],
                      functools.partial(preprocessing.harmonize, data_type="d"), 3)
 
 
 def handle_multiclass_supervised_train():
     handle_endpoints("genoml multiclass supervised train",
-                     ["prefix", "metric_max", "train_split"],
+                     ["prefix", "metric_max", "train_split", "random_state"],
                      multiclass_supervised.train, 3)
 
 
 def handle_multiclass_supervised_tune():
     handle_endpoints("genoml multiclass supervised tune",
-                     ["prefix", "metric_tune", "max_tune", "n_inner_cv"],
+                     ["prefix", "metric_tune", "max_tune", "n_inner_cv", "random_state"],
                      multiclass_supervised.tune, 3)
 
 
@@ -558,6 +561,14 @@ def add_default_flag(parser, flag_name):
             help='For adjusting data. A .csv of confounders to adjust for with ID column and header. Numeric, with no ' 
                  'missing data and the ID column is mandatory', 
             required=('--adjust_data' in sys.argv) and ("--pheno_test" in sys.argv),
+        )
+
+    elif flag_name == "random_state":
+        parser.add_argument(
+            '--random_state', 
+            type=int, 
+            default=3,
+            help="Random seed to use for reproducibility", 
         )
 
     else:

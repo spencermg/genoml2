@@ -262,7 +262,7 @@ def select_best_algorithm(log_table, metric_max, algorithms):
     return best_algorithm, best_algorithm_name
 
 
-def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
+def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv, random_state):
     """
     Apply randomized search to fine-tune the selected model.
 
@@ -274,6 +274,7 @@ def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
         scoring (sklearn.metrics._scorer._Scorer): Scoring metric to evaluate accuracy.
         n_iter (int): Maximum number of iterations.
         cv (sklearn.model_selection (Stratified)KFold): Cross-validation generator.
+        random_state (int): Random seed for reproducibility.
     
     :return: cv_results *(dict)*: \n
         Results from hyperparameter tuning.
@@ -285,16 +286,16 @@ def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
         cv_results = []
         algo_tuned = []
         for fold, estim in enumerate(estimator):
-            cv_results_fold, algo_tuned_fold = _tune_model(estim, x[fold], y[fold], param_distributions, scoring, n_iter, cv)
+            cv_results_fold, algo_tuned_fold = _tune_model(estim, x[fold], y[fold], param_distributions, scoring, n_iter, cv, random_state)
             cv_results.append(cv_results_fold)
             algo_tuned.append(algo_tuned_fold)
     else:
-        cv_results, algo_tuned = _tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv)
+        cv_results, algo_tuned = _tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv, random_state)
 
     return cv_results, algo_tuned
 
 
-def _tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
+def _tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv, random_state):
     """
     Apply randomized search to fine-tune the selected model.
 
@@ -306,6 +307,7 @@ def _tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
         scoring (sklearn.metrics._scorer._Scorer): Scoring metric to evaluate accuracy.
         n_iter (int): Maximum number of iterations.
         cv (sklearn.model_selection (Stratified)KFold): Cross-validation generator.
+        random_state (int): Random seed for reproducibility.
     
     :return: cv_results *(dict)*: \n
         Results from hyperparameter tuning.
@@ -319,7 +321,7 @@ def _tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv):
         n_iter = n_iter,
         cv = cv,
         n_jobs = -1,
-        random_state = 3,
+        random_state = random_state,
         verbose = 0,
     )
 
@@ -693,12 +695,13 @@ def get_algorithm_name(algorithm):
     return algorithm_name
 
 
-def get_tuning_hyperparams(module):
+def get_tuning_hyperparams(module, random_state):
     """
     Get tuning hyperparameters for model tuning for the given module.
 
     Args:
         module (str): GenoML module being used.
+        random_state (int): Random seed for reproducibility.
 
     :return: dict_hyperparams *(dict)*: \n
         Hyperparameters for each model.
@@ -708,13 +711,13 @@ def get_tuning_hyperparams(module):
         "AdaBoostClassifier" : {
             "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
             "learning_rate": Real(1e-4, 1e0, prior="log-uniform"),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
         },
         "AdaBoostRegressor" : {
             "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
             "loss": Categorical(["linear", "square", "exponential"]),
             "learning_rate": Real(1e-4, 1e0, prior="log-uniform"),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
         },
         "BaggingClassifier" : {
             "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
@@ -723,7 +726,7 @@ def get_tuning_hyperparams(module):
             "warm_start": Categorical([True, False]),
             "bootstrap": Categorical([True, False]),
             'n_jobs': Categorical([-1]),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
         },
         "BaggingRegressor" : {
             "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
@@ -732,7 +735,7 @@ def get_tuning_hyperparams(module):
             "warm_start": Categorical([True, False]),
             "bootstrap": Categorical([True, False]),
             'n_jobs': Categorical([-1]),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
         },
         "RandomForestClassifier" : {
             "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
@@ -741,7 +744,7 @@ def get_tuning_hyperparams(module):
             "min_weight_fraction_leaf": Real(0, 0.5),
             "max_features": Categorical(["sqrt", "log2"]),
             "warm_start": Categorical([True, False]),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
         },
         "RandomForestRegressor" : {
             "n_estimators": Integer(1e1, 1e2, prior="log-uniform"),
@@ -750,7 +753,7 @@ def get_tuning_hyperparams(module):
             "min_weight_fraction_leaf": Real(0, 0.5),
             "max_features": Categorical(["sqrt", "log2"]),
             "warm_start": Categorical([True, False]),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
         },
         "XGBRegressor" : {
             "max_depth": Integer(1, 10), 
@@ -760,7 +763,7 @@ def get_tuning_hyperparams(module):
             "subsample": Real(0.5, 1.0),
             "colsample_bytree": Real(0.5, 1.0),
             "min_child_weight": Integer(1, 10),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
         },
         "GradientBoostingClassifier" : {
             "loss": Categorical(["log_loss", "exponential"]),
@@ -772,7 +775,7 @@ def get_tuning_hyperparams(module):
             "min_samples_leaf": Real(0.01, 1),
             "min_weight_fraction_leaf": Real(0, 0.5),
             "max_depth": Integer(1, 10),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
             "max_features": Categorical(["sqrt", "log2"]),
         },
         "GradientBoostingRegressor" : {
@@ -785,7 +788,7 @@ def get_tuning_hyperparams(module):
             "min_samples_leaf": Real(0.01, 1),
             "min_weight_fraction_leaf": Real(0, 0.5),
             "max_depth": Integer(1, 10),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
             "max_features": Categorical(["sqrt", "log2"]),
         },
         "ComplementNB" : {
@@ -872,7 +875,7 @@ def get_tuning_hyperparams(module):
             "penalty": Categorical(["l1", "l2"]),
             "C": Integer(1e0, 1e1),
             "solver": Categorical(["liblinear", "saga"]),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
         }
         dict_hyperparams["XGBClassifier"] = {
             "max_depth": Integer(1, 10),
@@ -883,7 +886,7 @@ def get_tuning_hyperparams(module):
             "colsample_bytree": Real(0.5, 1.0),
             "min_child_weight": Integer(1, 10),
             "objective": Categorical(["binary:logistic"]),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
         }
 
     elif module == "multiclass":
@@ -891,7 +894,7 @@ def get_tuning_hyperparams(module):
             "penalty": Categorical(["l1", "l2"]),
             "C": Integer(1e0, 1e1),
             "solver": Categorical(["saga"]),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
         }
         dict_hyperparams["XGBClassifier"] = {
             "max_depth": Integer(1, 10),
@@ -902,7 +905,7 @@ def get_tuning_hyperparams(module):
             "colsample_bytree": Real(0.5, 1.0),
             "min_child_weight": Integer(1, 10),
             "objective": Categorical(["multi:softprob"]),
-            "random_state": Categorical([3]),
+            "random_state": Categorical([random_state]),
         }
     
     return dict_hyperparams
@@ -925,7 +928,7 @@ def _fit_algorithm(algorithm, algorithm_name, x_train, y_train, x_valid, y_valid
     return row, algorithm
 
 
-def train_valid_split(df, train_split):
+def train_valid_split(df, train_split, random_state):
     if train_split > 1:
         train_split = train_split / 100
 
@@ -935,7 +938,7 @@ def train_valid_split(df, train_split):
         x, 
         y, 
         test_size=1-train_split, 
-        random_state=3,
+        random_state=random_state,
     )
 
     return x_train, x_valid, y_train, y_valid

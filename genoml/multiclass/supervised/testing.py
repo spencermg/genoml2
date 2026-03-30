@@ -91,9 +91,3 @@ class Test:
             self._algorithm,
             self._run_prefix,
         )
-        # log_table = pd.DataFrame(
-        #     data=[[self._algorithm_name] + list(multiclass_utils._calculate_accuracy_scores(self._y_test, self._y_pred_prob))], 
-        #     columns=["Algorithm", "AUC", "Accuracy", "Balanced_Accuracy", "Log_Loss", "Sensitivity", "Specificity", "PPV", "NPV"],
-        # )
-        # log_outfile = self._run_prefix.joinpath('performance_metrics.txt')
-        # log_table.to_csv(log_outfile, index=False, sep="\t")

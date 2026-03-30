@@ -23,12 +23,13 @@ from joblib import dump
 
 
 class Adjuster:
-    def __init__(self, prefix, df_merged, target_features, confounders, adjust_normalize, umap_reduce, force_impute=False):
+    def __init__(self, prefix, df_merged, target_features, confounders, adjust_normalize, umap_reduce, random_state, force_impute=False):
         self.prefix = prefix
         self.umap_reduce = umap_reduce
         self.confounders = confounders
         self.normalize = adjust_normalize
         self.df_merged = df_merged
+        self._random_state = random_state
 
         self.df_confounders = pd.read_csv(self.confounders, engine="python", sep=None, encoding="utf-8-sig")
         self.df_confounders["ID"] = self.df_confounders["ID"].astype(str)
@@ -67,7 +68,7 @@ class Adjuster:
             to_umap = self.df_confounders.drop(columns=["ID"])
 
             if reducer is None:
-                reducer = umap.UMAP(random_state=153)
+                reducer = umap.UMAP(random_state=self._random_state)
                 reducer = reducer.fit(to_umap)
             embedding = reducer.transform(to_umap)
             self.df_confounders = pd.DataFrame({

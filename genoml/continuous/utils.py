@@ -61,8 +61,7 @@ def export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld=None,
             _run_regression_summary(out_dir, fold_df)
 
     else:
-        _export_prediction_data(out_dir, ids, step, algorithm, y, x,
-                                y_withheld=y_withheld, x_withheld=x_withheld)
+        _export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld=y_withheld, x_withheld=x_withheld)
 
 
 def _collect_prediction_data(ids, step, algorithm, y, x, y_withheld=None, x_withheld=None, ids_withheld=None, fold=None):

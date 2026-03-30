@@ -24,7 +24,7 @@ from sklearn.model_selection import KFold
 
 class Tune():
     @utils.DescriptionLoader.function_description("info", cmd="Continuous Supervised Tuning")
-    def __init__(self, run_prefix, metric_tune, max_iter, cv_count):
+    def __init__(self, run_prefix, metric_tune, max_iter, cv_count, random_state):
         utils.DescriptionLoader.print(
             "tuning/info",
             python_version=sys.version,
@@ -57,7 +57,7 @@ class Tune():
                 self._algorithm.append(joblib.load(model_path))
             algorithm_name = self._algorithm[0].__class__.__name__
 
-        dict_hyperparams = utils.get_tuning_hyperparams("continuous")
+        dict_hyperparams = utils.get_tuning_hyperparams("continuous", random_state)
 
         if metric_tune == "Explained_Variance":
             self._scoring_metric = metrics.make_scorer(metrics.explained_variance_score)
@@ -72,8 +72,8 @@ class Tune():
         if not self._run_prefix.is_dir():
             self._run_prefix.mkdir()
         self._max_iter = max_iter
-        self._cv = KFold(n_splits=cv_count, shuffle=True, random_state=3)
-        # self._cv_count = cv_count
+        self._random_state = random_state
+        self._cv = KFold(n_splits=cv_count, shuffle=True, random_state=self._random_state)
             
         self._hyperparameters = dict_hyperparams[algorithm_name]
         self._cv_tuned = None
@@ -99,6 +99,7 @@ class Tune():
             self._scoring_metric,
             self._max_iter,
             self._cv,
+            self._random_state,
         )
 
 

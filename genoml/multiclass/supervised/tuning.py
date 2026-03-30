@@ -26,7 +26,7 @@ from skopt.space import Categorical
 
 class Tune:
     @utils.DescriptionLoader.function_description("info", cmd="Multiclass Supervised Tuning")
-    def __init__(self, run_prefix, metric_tune, max_iter, cv_count):
+    def __init__(self, run_prefix, metric_tune, max_iter, cv_count, random_state):
         utils.DescriptionLoader.print(
             "tuning/info",
             python_version=sys.version,
@@ -59,7 +59,7 @@ class Tune:
                 self._algorithm.append(joblib.load(model_path))
             algorithm_name = utils.get_algorithm_name(self._algorithm[0])
 
-        dict_hyperparams = utils.get_tuning_hyperparams("multiclass")
+        dict_hyperparams = utils.get_tuning_hyperparams("multiclass", random_state)
 
         # Exponential loss does not work for multiclass
         dict_hyperparams["GradientBoostingClassifier"]["loss"] = Categorical([
@@ -75,7 +75,8 @@ class Tune:
         if not self._run_prefix.is_dir():
             self._run_prefix.mkdir()
         self._max_iter = max_iter
-        self._cv = StratifiedKFold(n_splits=cv_count, shuffle=True, random_state=3)
+        self._random_state = random_state
+        self._cv = StratifiedKFold(n_splits=cv_count, shuffle=True, random_state=self._random_state)
 
         self._hyperparameters = dict_hyperparams[algorithm_name]
         self._cv_tuned = None
@@ -102,6 +103,7 @@ class Tune:
             self._scoring_metric,
             self._max_iter,
             self._cv,
+            self._random_state,
         )
 
 
