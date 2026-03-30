@@ -20,7 +20,7 @@ import pickle
 import sys
 from genoml import utils, dependencies
 from genoml.preprocessing import adjuster, featureselection
-from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
 from time import time
 
 
@@ -106,13 +106,31 @@ class Munge:
             )
         
         if n_outer_cv is not None:
-            kf = KFold(n_splits=self.n_outer_cv, shuffle=True, random_state=self._random_state)
+            skf = StratifiedKFold(
+                n_splits=self.n_outer_cv,
+                shuffle=True,
+                random_state=self._random_state,
+            )
             self.df_merged_cv_dict = {}
-            for fold, (train_idx, test_idx) in enumerate(kf.split(self.df_merged)):
-                self.df_merged_cv_dict[fold+1] = {
-                    "train": self.df_merged.iloc[train_idx],
-                    "test": self.df_merged.iloc[test_idx]
-                }
+            if data_type == "c":
+                self.df_merged["PHENO_bin"] = pd.qcut(
+                    self.df_merged["PHENO"],
+                    q = max(2, min(10, len(self.df_merged) // self.n_outer_cv)),
+                    labels=False,
+                    duplicates="drop",
+                )
+                self.df_merged = self.df_merged.dropna(subset=["PHENO_bin"])
+                for fold, (train_idx, test_idx) in enumerate(skf.split(self.df_merged, self.df_merged["PHENO_bin"])):
+                    self.df_merged_cv_dict[fold+1] = {
+                        "train": self.df_merged.iloc[train_idx].drop(columns="PHENO_bin"),
+                        "test": self.df_merged.iloc[test_idx].drop(columns="PHENO_bin"),
+                    }
+            else:
+                for fold, (train_idx, test_idx) in enumerate(skf.split(self.df_merged, self.df_merged["PHENO"])):
+                    self.df_merged_cv_dict[fold+1] = {
+                        "train": self.df_merged.iloc[train_idx],
+                        "test": self.df_merged.iloc[test_idx],
+                    }
 
 
     def filter_shared_cols(self):

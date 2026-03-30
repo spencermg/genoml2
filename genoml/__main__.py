@@ -26,15 +26,18 @@ from genoml import utils, dependencies
 from pathlib import Path
 
 
-### Make sure this works for discrete and multiuclass too
+import polars as pl
+df = pl.read_csv("NABEC_CpGs_hap1.tsv", separator="\t")
+df = df.select([col for col in df.columns if col.endswith("modFraction")])
 
-### TODO: Add parameter for random state that is applied everywhere in GenoML
+### Make sure this works for discrete and multiclass too
+### Add parameter for random state that is applied everywhere in GenoML
 ### TODO: Add option for stratifying cross-validations
-### TODO: Create variable for outer_cv instead of always checking if something is a list
 ### TODO: Decide between "run_prefix" and "prefix"
+### TODO: Create variable for outer_cv instead of always checking if something is a list
+
 ### TODO: Add stratification setting for cross validation and train/test split steps
 ### TODO: Look into which data are "withheld" during training and tuning
-### TODO: Check that you get an error if you do outer_cv with test data included as well
 ### TODO: Check file extensions (txt vs tsv)
 ### TODO: In munging, look into difference between n_outer_cv and self.n_outer_cv
 ### TODO: Get rid of convergencewarning messages in tuning step
@@ -46,7 +49,6 @@ from pathlib import Path
 ### TODO: Check if additional_sumstats is the same across all modules
 ### TODO: Check all possible model classes to make sure they all work and all their hyperparam combinations are compatible with tuning
 ### TODO: Test discrete and multiclass on real datasets to make sure they actually work well
-
 
 
 

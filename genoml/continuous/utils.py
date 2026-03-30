@@ -21,9 +21,9 @@ from genoml import utils
 from sklearn import metrics
 
 
-def export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld=None, x_withheld=None, ids_withheld=None):
+def export_prediction_data(out_dir, ids, step, algorithm, y, x, is_using_outer_cv, y_withheld=None, x_withheld=None, ids_withheld=None):
 
-    if isinstance(algorithm, list):
+    if is_using_outer_cv:
         all_results = []
         all_withheld_results = []
 
@@ -151,7 +151,7 @@ def _run_regression_summary(out_dir, df):
 #         x_withheld (numpy.ndarray, optional): Array of input data for each validation sample (Default: None).
 #     """
 
-#     if isinstance(algorithm, list):
+#     if is_using_outer_cv:
 #         for fold, algo in enumerate(algorithm):
 #             if y_withheld is not None and x_withheld is not None:
 #                 _export_prediction_data(out_dir, ids[fold], step, algo, y[fold], x[fold], y_withheld=y_withheld[fold], x_withheld=x_withheld[fold], fold=fold)
@@ -241,23 +241,23 @@ def _export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld=None
             f.write(fitted.summary().as_csv().replace(",", "\t"))
 
 
-def additional_sumstats(algorithm_name, y_test, x_test, algorithm, run_prefix):
-    if isinstance(y_test, list):
+def additional_sumstats(algorithm_name, y_test, x_test, algorithm, prefix, is_using_outer_cv):
+    if is_using_outer_cv:
         for fold, y_test_fold in enumerate(y_test):
             y_pred_fold = algorithm[fold].predict(x_test[fold])
-            _additional_sumstats(algorithm_name, y_test_fold, y_pred_fold, run_prefix, fold=fold)
+            _additional_sumstats(algorithm_name, y_test_fold, y_pred_fold, prefix, fold=fold)
     else:
         y_pred = algorithm.predict(x_test)
-        _additional_sumstats(algorithm_name, y_test, y_pred, run_prefix)
+        _additional_sumstats(algorithm_name, y_test, y_pred, prefix)
 
 
-def _additional_sumstats(algorithm_name, y_test, y_pred, run_prefix, fold=None):
+def _additional_sumstats(algorithm_name, y_test, y_pred, prefix, fold=None):
     suffix = f"_fold{fold+1}" if fold is not None else ""
     log_table = pd.DataFrame(
         data=[[algorithm_name] + list(_calculate_accuracy_scores(y_test, y_pred))], 
         columns=["Algorithm", "Explained Variance", "Mean Squared Error", "Median Absolute Error", "R-Squared_Error"],
     )
-    log_outfile = run_prefix.joinpath(f"performance_metrics{suffix}.txt")
+    log_outfile = prefix.joinpath(f"performance_metrics{suffix}.txt")
     log_table.to_csv(log_outfile, index=False, sep="\t")
 
 

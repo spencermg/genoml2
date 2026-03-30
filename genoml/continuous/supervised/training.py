@@ -68,9 +68,9 @@ class Train:
             "Median_Absolute_Error",
             "R-Squared_Error",
         ]
-        self._run_prefix = Path(prefix).joinpath("Train")
-        if not self._run_prefix.is_dir():
-            self._run_prefix.mkdir()
+        self._prefix = Path(prefix).joinpath("Train")
+        if not self._prefix.is_dir():
+            self._prefix.mkdir()
         self._algorithms = {algorithm.__class__.__name__: algorithm for algorithm in candidate_algorithms}
         self._metric_max = metric_max
         self._best_algorithm = None
@@ -80,13 +80,14 @@ class Train:
     def compete(self):
         """ Compete the algorithms. """
         self._log_table, self._algorithms = utils.fit_algorithms(
-            self._run_prefix, 
+            self._prefix, 
             self._algorithms, 
             self._x_train, 
             self._y_train, 
             self._x_valid, 
             self._y_valid, 
             self._column_names, 
+            self._is_using_outer_cv,
             continuous_utils.calculate_accuracy_scores,
         )
 
@@ -99,27 +100,29 @@ class Train:
             self._metric_max, 
             self._algorithms,
         )
-        with open(self._run_prefix.parent.joinpath("algorithm.txt"), "w") as file:
+        with open(self._prefix.parent.joinpath("algorithm.txt"), "w") as file:
             file.write(best_algorithm_name)
 
 
     def export_model(self):
         """ Save best-performing algorithm. """
         utils.export_model(
-            self._run_prefix.parent, 
+            self._prefix.parent, 
             self._best_algorithm,
+            self._is_using_outer_cv,
         )
 
 
     def export_prediction_data(self):
         """ Save results from best-performing algorithm. """
         continuous_utils.export_prediction_data(
-            self._run_prefix, 
+            self._prefix, 
             self._ids_train, 
             "training",
             self._best_algorithm,
             self._y_train, 
             self._x_train, 
+            self._is_using_outer_cv,
             y_withheld = self._y_valid, 
             x_withheld = self._x_valid,
             ids_withheld = self._ids_valid,

@@ -33,6 +33,7 @@ class Train:
 
         ### TODO: Add condition for if nothing is there, in which case they have not munged
         if Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5").exists():
+            self._is_using_outer_cv = False
             df_train = utils.read_munged_data(Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5"))
             x_train, x_valid, y_train, y_valid = utils.train_valid_split(df_train, train_split, random_state)
             self._x_train = x_train.drop(columns=['ID'])
@@ -42,6 +43,7 @@ class Train:
             self._ids_train = x_train.ID
             self._ids_valid = x_valid.ID
         elif Path(prefix).joinpath("Munge").joinpath(f"train_dataset_fold1.h5").exists():
+            self._is_using_outer_cv = True
             self._x_train = []
             self._x_valid = []
             self._y_train = []
@@ -73,9 +75,9 @@ class Train:
             "PPV",
             "NPV",
         ]
-        self._run_prefix = Path(prefix).joinpath("Train")
-        if not self._run_prefix.is_dir():
-            self._run_prefix.mkdir()
+        self._prefix = Path(prefix).joinpath("Train")
+        if not self._prefix.is_dir():
+            self._prefix.mkdir()
         self._algorithms = {algorithm.__class__.__name__: algorithm for algorithm in candidate_algorithms}
         self._metric_max = metric_max
         self._best_algorithm = None
@@ -86,13 +88,14 @@ class Train:
     def compete(self):
         """ Compete the algorithms. """
         self._log_table, self._algorithms = utils.fit_algorithms(
-            self._run_prefix,
+            self._prefix,
             self._algorithms,
             self._x_train,
             self._y_train,
             self._x_valid,
             self._y_valid,
             self._column_names,
+            self._is_using_outer_cv,
             discrete_utils.calculate_accuracy_scores,
         )
 
@@ -121,36 +124,39 @@ class Train:
             self._metric_max, 
             self._algorithms,
         )
-        with open(self._run_prefix.parent.joinpath("algorithm.txt"), "w") as file:
+        with open(self._prefix.parent.joinpath("algorithm.txt"), "w") as file:
             file.write(self._best_algorithm_name)
 
 
     def export_model(self):
         """ Save best-performing algorithm """
         utils.export_model(
-            self._run_prefix.parent, 
+            self._prefix.parent, 
             self._best_algorithm,
+            self._is_using_outer_cv,
         )
 
 
     def plot_results(self):
         """ Plot results from best-performing algorithm. """
         discrete_utils.plot_results(
-            self._run_prefix,
-            [y_valid.values for y_valid in self._y_valid] if isinstance(self._y_valid, list) else self._y_valid.values,
-            [x_valid.values for x_valid in self._x_valid] if isinstance(self._x_valid, list) else self._x_valid.values,
+            self._prefix,
+            [y_valid.values for y_valid in self._y_valid] if self._is_using_outer_cv else self._y_valid.values,
+            [x_valid.values for x_valid in self._x_valid] if self._is_using_outer_cv else self._x_valid.values,
             self._best_algorithm,
+            self._is_using_outer_cv,
         )
 
 
     def export_prediction_data(self):
         """ Save results from best-performing algorithm. """
         discrete_utils.export_prediction_data(
-            self._run_prefix,
+            self._prefix,
             self._best_algorithm,
             self._y_valid,
             self._x_valid,
             self._ids_valid,
+            self._is_using_outer_cv,
             y_train = self._y_train,
             x_train = self._x_train,
             ids_train = self._ids_train,

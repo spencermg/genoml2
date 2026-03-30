@@ -33,6 +33,7 @@ class Test:
 
         ### TODO: Add condition for if nothing is there, in which case they have not munged
         if Path(prefix).joinpath("Munge").joinpath(f"test_dataset.h5").exists():
+            self._is_using_outer_cv = False
             df_test = utils.read_munged_data(Path(prefix).joinpath("Munge").joinpath(f"test_dataset.h5"))
             self._y_test = df_test.PHENO
             self._ids_test = df_test.ID
@@ -40,6 +41,7 @@ class Test:
             self._algorithm = joblib.load(Path(prefix).joinpath("model.joblib"))
             self._algorithm_name = utils.get_algorithm_name(self._algorithm)
         elif Path(prefix).joinpath("Munge").joinpath(f"test_dataset_fold1.h5").exists():
+            self._is_using_outer_cv = True
             self._y_test = []
             self._ids_test = []
             self._x_test = []
@@ -53,9 +55,9 @@ class Test:
                 self._algorithm.append(joblib.load(Path(prefix).joinpath(f"model_fold{fold+1}.joblib")))
             self._algorithm_name = utils.get_algorithm_name(self._algorithm[0])
 
-        self._run_prefix = Path(prefix).joinpath("Test")
-        if not self._run_prefix.is_dir():
-            self._run_prefix.mkdir()
+        self._prefix = Path(prefix).joinpath("Test")
+        if not self._prefix.is_dir():
+            self._prefix.mkdir()
 
         self.num_classes = None
         
@@ -63,22 +65,24 @@ class Test:
     def plot_results(self):
         """ Plot results from best-performing algorithm. """
         self._num_classes = multiclass_utils.plot_results(
-            self._run_prefix,
-            [pd.get_dummies(y_test).values for y_test in self._y_test] if isinstance(self._y_test, list) else pd.get_dummies(self._y_test).values, 
-            [x_test.values for x_test in self._x_test] if isinstance(self._x_test, list) else self._x_test.values, 
+            self._prefix,
+            [pd.get_dummies(y_test).values for y_test in self._y_test] if self._is_using_outer_cv else pd.get_dummies(self._y_test).values, 
+            [x_test.values for x_test in self._x_test] if self._is_using_outer_cv else self._x_test.values, 
             self._algorithm,
+            self._is_using_outer_cv,
         )
 
 
     def export_prediction_data(self):
         """ Save results from best-performing algorithm. """
         multiclass_utils.export_prediction_data(
-            self._run_prefix,
+            self._prefix,
             self._algorithm,
-            [pd.get_dummies(y_test) for y_test in self._y_test] if isinstance(self._y_test, list) else pd.get_dummies(self._y_test), 
+            [pd.get_dummies(y_test) for y_test in self._y_test] if self._is_using_outer_cv else pd.get_dummies(self._y_test), 
             self._x_test, 
             self._ids_test,
             self._num_classes,
+            self._is_using_outer_cv,
         )
 
 
@@ -89,5 +93,6 @@ class Test:
             self._y_test,
             self._x_test,
             self._algorithm,
-            self._run_prefix,
+            self._prefix,
+            self._is_using_outer_cv,
         )

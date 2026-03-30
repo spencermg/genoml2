@@ -262,7 +262,7 @@ def select_best_algorithm(log_table, metric_max, algorithms):
     return best_algorithm, best_algorithm_name
 
 
-def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv, random_state):
+def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv, random_state, is_using_outer_cv):
     """
     Apply randomized search to fine-tune the selected model.
 
@@ -282,11 +282,11 @@ def tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv, random
         Tuned model.
     """
 
-    if isinstance(estimator, list):
+    if is_using_outer_cv:
         cv_results = []
         algo_tuned = []
-        for fold, estim in enumerate(estimator):
-            cv_results_fold, algo_tuned_fold = _tune_model(estim, x[fold], y[fold], param_distributions, scoring, n_iter, cv, random_state)
+        for fold in range(len(estimator)):
+            cv_results_fold, algo_tuned_fold = _tune_model(estimator[fold], x[fold], y[fold], param_distributions, scoring, n_iter, cv, random_state)
             cv_results.append(cv_results_fold)
             algo_tuned.append(algo_tuned_fold)
     else:
@@ -335,7 +335,7 @@ def _tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv, rando
     return cv_results, algo_tuned
 
 
-def summarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, cv):
+def summarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, cv, is_using_outer_cv):
     """
     Use cross-validation to compare the tuned model to the trined 
     baseline model. 
@@ -355,11 +355,11 @@ def summarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, c
         Cross-validation results for the tuned model.
     """
 
-    if isinstance(estimator_baseline, list):
+    if is_using_outer_cv:
         cv_baseline = [] 
         cv_tuned = []
-        for fold, estimator_baseline_fold in enumerate(estimator_baseline):
-            cv_baseline_fold, cv_tuned_fold = _summarize_tune(out_dir, estimator_baseline_fold, estimator_tune[fold], x[fold], y[fold], scoring, cv, fold=fold)
+        for fold in range(len(estimator_baseline)):
+            cv_baseline_fold, cv_tuned_fold = _summarize_tune(out_dir, estimator_baseline[fold], estimator_tune[fold], x[fold], y[fold], scoring, cv, fold=fold)
             cv_baseline.append(cv_baseline_fold)
             cv_tuned.append(cv_tuned_fold)
 
@@ -445,7 +445,7 @@ def _summarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, 
     return cv_baseline, cv_tuned
 
 
-def report_best_tuning(out_dir, cv_results, n_top):
+def report_best_tuning(out_dir, cv_results, n_top, is_using_outer_cv):
     """
     Find the top-performing tuning iterations and save those to a table.
 
@@ -455,9 +455,9 @@ def report_best_tuning(out_dir, cv_results, n_top):
         n_top (int): Number of iterations to report.
     """
 
-    if isinstance(cv_results, list):
-        for fold, cv_results_fold in enumerate(cv_results):
-            _report_best_tuning(out_dir, cv_results_fold, n_top, fold=fold)
+    if is_using_outer_cv:
+        for fold in range(len(cv_results)):
+            _report_best_tuning(out_dir, cv_results[fold], n_top, fold=fold)
     else:
         _report_best_tuning(out_dir, cv_results, n_top)
 
@@ -490,7 +490,7 @@ def _report_best_tuning(out_dir, cv_results, n_top, fold=None):
     print(f"We are exporting a summary table of the top {n_top} iterations of the hyperparameter tuning step and its parameters here {log_outfile}.")
 
 
-def compare_tuning_performance(out_dir, cv_tuned, cv_baseline, algo_tuned, algo_baseline, x=None):
+def compare_tuning_performance(out_dir, cv_tuned, cv_baseline, algo_tuned, algo_baseline, is_using_outer_cv, x=None):
     """
     Determine whether the tuned model outperformed the baseline model.
 
@@ -508,10 +508,10 @@ def compare_tuning_performance(out_dir, cv_tuned, cv_baseline, algo_tuned, algo_
         Predicted outputs from the chosen model.
     """
 
-    if isinstance(cv_tuned, list):
+    if is_using_outer_cv:
         algorithm = []
         y_predicted = []
-        for fold, cv_tuned_fold in enumerate(cv_tuned):
+        for fold in range(len(cv_tuned)):
             algorithm_fold, y_predicted_fold = _compare_tuning_performance(out_dir, cv_tuned[fold], cv_baseline[fold], algo_tuned[fold], algo_baseline[fold], x=x[fold], fold=fold)
             algorithm.append(algorithm_fold)
             y_predicted.append(y_predicted_fold)
@@ -557,7 +557,7 @@ def _compare_tuning_performance(out_dir, cv_tuned, cv_baseline, algo_tuned, algo
         algorithm = algo_tuned
         yield algorithm
 
-    export_model(out_dir.parent, algorithm, fold=fold)
+    export_model(out_dir.parent, algorithm, False, fold=fold)
 
     y_predicted = None
     if x is not None:
@@ -591,7 +591,7 @@ def read_munged_data(file_path):
     return df
 
 
-def export_model(out_dir, algorithm, fold=None):
+def export_model(out_dir, algorithm, is_using_outer_cv, fold=None):
     """
     Export a fitted algorithm to a readable file.
 
@@ -601,14 +601,14 @@ def export_model(out_dir, algorithm, fold=None):
         fold (int): If using outer cross-validation, fold number corresponding to current data/algorithm (Default: None).
     """
 
-    if isinstance(algorithm, list):
-        for fold, algo in enumerate(algorithm):
+    if is_using_outer_cv:
+        for fold in range(len(algorithm)):
             output_path = out_dir.joinpath(f"model_fold{fold+1}.joblib")
             with DescriptionLoader.context(
                 "export_model",
                 output_path=output_path,
             ):
-                joblib.dump(algo, output_path)
+                joblib.dump(algorithm[fold], output_path)
         return
 
     if fold is not None:
@@ -624,7 +624,7 @@ def export_model(out_dir, algorithm, fold=None):
 
 ### TODO: Check whether averaging is best vs any other metric
 @DescriptionLoader.function_description("utils/training/compete")
-def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, column_names, calculate_accuracy_scores):
+def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, column_names, is_using_outer_cv, calculate_accuracy_scores):
     """
     Compete algorithms against each other during the training stage and record results.
 
@@ -651,7 +651,7 @@ def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, colu
             name=algorithm_name,
         ):
             trained_algorithms[algorithm_name] = []
-            if isinstance(x_train, list):
+            if is_using_outer_cv,:
                 algorithm_log_table = []
                 for x_train_fold, y_train_fold, x_valid_fold, y_valid_fold in zip(x_train, y_train, x_valid, y_valid):
                     algorithm_log, trained_algorithm = _fit_algorithm(algorithm, algorithm_name, x_train_fold, y_train_fold, x_valid_fold, y_valid_fold, column_names, calculate_accuracy_scores)

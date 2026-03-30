@@ -21,7 +21,7 @@ from genoml import utils
 from sklearn import metrics
 
 
-def plot_results(out_dir, y, x, algorithm):
+def plot_results(out_dir, y, x, algorithm, is_using_outer_cv):
     """
     Generate ROC and precision-recall plots for each class.
 
@@ -36,7 +36,7 @@ def plot_results(out_dir, y, x, algorithm):
         Number of classes being predicted
     """
 
-    if isinstance(algorithm, list):
+    if is_using_outer_cv:
         algorithm_name = utils.get_algorithm_name(algorithm[0])
         for fold, algo in enumerate(algorithm):
             num_classes = _plot_results(out_dir, y[fold], x[fold], algo, algorithm_name, fold=fold)
@@ -134,7 +134,7 @@ def precision_recall_plot(plot_path, y, y_pred_prob, algorithm_name, num_classes
           f"the best performing algorithm.")
 
 
-def export_prediction_data(out_dir, algorithm, y, x, ids, num_classes, y_train=None, x_train=None, ids_train=None):
+def export_prediction_data(out_dir, algorithm, y, x, ids, num_classes, is_using_outer_cv, y_train=None, x_train=None, ids_train=None):
     """
     Save probability histograms and tables with accuracy metrics
 
@@ -150,7 +150,7 @@ def export_prediction_data(out_dir, algorithm, y, x, ids, num_classes, y_train=N
         ids_train (optional, pandas.Series): ids for participants in the training dataset (Default: None).
     """
 
-    if isinstance(algorithm, list):
+    if is_using_outer_cv:
         for fold, algo in enumerate(algorithm):
             if y_train is not None and x_train is not None and ids_train is not None:
                 _export_prediction_data(out_dir, algo, y[fold], x[fold], ids[fold], num_classes, y_train=y_train[fold], x_train=x_train[fold], ids_train=ids_train[fold], fold=fold)
@@ -208,23 +208,23 @@ def _export_prediction_data(out_dir, algorithm, y, x, ids, num_classes, y_train=
     )
 
 
-def additional_sumstats(algorithm_name, y_test, x_test, algorithm, run_prefix):
-    if isinstance(y_test, list):
+def additional_sumstats(algorithm_name, y_test, x_test, algorithm, prefix, is_using_outer_cv):
+    if is_using_outer_cv:
         for fold, y_test_fold in enumerate(y_test):
             y_pred_fold = algorithm[fold].predict_proba(x_test[fold])
-            _additional_sumstats(algorithm_name, y_test_fold, y_pred_fold, run_prefix, fold=fold)
+            _additional_sumstats(algorithm_name, y_test_fold, y_pred_fold, prefix, fold=fold)
     else:
         y_pred = algorithm.predict_proba(x_test)
-        _additional_sumstats(algorithm_name, y_test, y_pred, run_prefix)
+        _additional_sumstats(algorithm_name, y_test, y_pred, prefix)
 
 
-def _additional_sumstats(algorithm_name, y_test, y_pred, run_prefix, fold=None):
+def _additional_sumstats(algorithm_name, y_test, y_pred, prefix, fold=None):
     suffix = f"_fold{fold+1}" if fold is not None else ""
     log_table = pd.DataFrame(
         data=[[algorithm_name] + list(_calculate_accuracy_scores(y_test, y_pred))], 
         columns=["Algorithm", "AUC", "Accuracy", "Balanced_Accuracy", "Log_Loss", "Sensitivity", "Specificity", "PPV", "NPV"],
     )
-    log_outfile = run_prefix.joinpath(f"performance_metrics{suffix}.txt")
+    log_outfile = prefix.joinpath(f"performance_metrics{suffix}.txt")
     log_table.to_csv(log_outfile, index=False, sep="\t")
 
 
