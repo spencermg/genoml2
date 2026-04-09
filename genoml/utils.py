@@ -651,7 +651,7 @@ def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, colu
             name=algorithm_name,
         ):
             trained_algorithms[algorithm_name] = []
-            if is_using_outer_cv,:
+            if is_using_outer_cv:
                 algorithm_log_table = []
                 for x_train_fold, y_train_fold, x_valid_fold, y_valid_fold in zip(x_train, y_train, x_valid, y_valid):
                     algorithm_log, trained_algorithm = _fit_algorithm(algorithm, algorithm_name, x_train_fold, y_train_fold, x_valid_fold, y_valid_fold, column_names, calculate_accuracy_scores)

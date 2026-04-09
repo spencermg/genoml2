@@ -13,16 +13,18 @@
 # limitations under the License.
 # ==============================================================================
 
-import pandas as pd
-from sklearn import ensemble, feature_selection
 import joblib
+import numpy as np
 import pandas as pd
+import re
+import statsmodels.formula.api as smf
+from sklearn import ensemble, feature_selection
 from statsmodels.stats import outliers_influence
-
+from tqdm import tqdm
 
 ### TODO: Migrate print statements to use utils.DescriptionLoader.print
 class FeatureSelection:
-    def __init__(self, prefix, df, data_type, n_est, vif_iter, vif_threshold, chunk_size, random_state, fold=None):
+    def __init__(self, prefix, df, data_type, n_est, vif_iter, vif_threshold, chunk_size, pearson_threshold, ols_threshold, random_state, fold=None):
         df.dropna(axis=1, inplace=True)
         self.prefix = prefix
         self.n_est = n_est
@@ -34,6 +36,8 @@ class FeatureSelection:
         self.vif_iter = vif_iter
         self.vif_threshold = vif_threshold
         self.chunk_size = chunk_size
+        self._pearson_threshold = pearson_threshold
+        self._ols_threshold = ols_threshold
         self._random_state = random_state
         self.fold = fold
 
@@ -44,8 +48,81 @@ class FeatureSelection:
             self.extra_trees()
         if self.vif_iter > 0:
             self.vif()
+        
+        # OLS before Pearson Correlation for computational efficiency
+        if self._ols_threshold > 0:
+            self.ols_association()
+        if self._pearson_threshold > 0:
+            self.pearson_correlation()
         return self.df
 
+    def pearson_correlation(self):
+        df_features = self.df.copy().drop(columns=["ID", "PHENO"])
+        numeric_features = df_features.select_dtypes(include=[np.number])
+        corr_matrix = numeric_features.corr().abs()
+        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+        correlation_filtered_features = [
+            column for column in numeric_features.columns 
+            if upper[column].dropna().max() < self._pearson_threshold
+        ]
+        self.df = self.df[["ID", "PHENO"] + correlation_filtered_features]
+
+        # df_features = self.df.copy().drop(columns=["ID", "PHENO"])
+        # corr_matrix = df_features.select_dtypes(include=[np.number]).corr().abs()
+        # upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+        # correlation_filtered_features = [column for column in df_features.columns if all(upper[column] < self._pearson_threshold)]
+        # self.df = self.df[["ID", "PHENO"] + correlation_filtered_features]
+        print(f"{len(correlation_filtered_features)} features remaining after Pearson's correlation filtering with a threshold of {self._pearson_threshold}")
+
+    def ols_association(self):
+        regression_results = []
+        feature_columns = self.df.drop(columns=["ID", "PHENO"]).columns.values
+        for feature in tqdm(feature_columns, total=len(feature_columns), desc="Running independent regressions", miniters=len(feature_columns) // 100):
+            safe_feature_name = re.sub(r'[^0-9a-zA-Z_]', '_', feature)
+            
+            df_regression = self.df[["PHENO", feature]].copy()
+            df_regression = df_regression.rename(columns={feature: safe_feature_name})
+
+            formula = f"PHENO ~ {safe_feature_name}"
+            model = smf.ols(formula, data=df_regression).fit()
+
+            conf_int = model.conf_int().loc[safe_feature_name]
+            regression_results.append({
+                "Feature": feature,
+                "Coefficient": model.params[safe_feature_name],
+                "StdErr": model.bse[safe_feature_name],
+                "TValue": model.tvalues[safe_feature_name],
+                "pval": model.pvalues[safe_feature_name],
+                "CI_L95": conf_int[0],
+                "CI_U95": conf_int[1],
+                "R2": model.rsquared,
+                "Adj_R2": model.rsquared_adj,
+                "AIC": model.aic,
+                "BIC": model.bic,
+                "F_statistic": model.fvalue,
+                "F_pvalue": model.f_pvalue,
+                "n_obs": int(model.nobs),
+            })
+        
+        # Sort features by p-value
+        df_regression_results = pd.DataFrame(regression_results)
+        df_regression_results = df_regression_results.sort_values(by="pval")
+
+        # Find features that meet the user-defined threshold
+        features_to_include = df_regression_results.loc[df_regression_results["pval"] < self._ols_threshold, "Feature"].tolist()
+        print(f"{len(features_to_include)} out of {len(df_regression_results)} features achieved an OLS p-value below {self._ols_threshold} and will be included")
+
+        # Filter data to keep significant features in order of importance
+        self.df = self.df[["ID", "PHENO"] + features_to_include]
+
+        # Save regression summary
+        ols_regression_summary_path = f"ols_regression{f'_fold{self.fold}' if self.fold is not None else ''}.tsv"
+        df_regression_results.to_csv(
+            self.prefix.joinpath(ols_regression_summary_path), 
+            sep="\t",
+            index=False,
+        )
+        
     def extra_trees(self):
         # Fit extraTrees model.
         print(f"Using {self.n_est} extraTrees estimators...")
@@ -61,7 +138,7 @@ class FeatureSelection:
             zip(self.x.columns, clf.feature_importances_),
             columns=["Feature_Name", "Score"]
         ).sort_values(by=['Score'], ascending=False)
-        feature_importance_path = f"approx_feature_importance{f'_fold{fold}' if fold is not None else ''}.txt"
+        feature_importance_path = f"approx_feature_importance{f'_fold{self.fold}' if self.fold is not None else ''}.txt"
         df_feature_scores.to_csv(
             self.prefix.joinpath(feature_importance_path), 
             index=False, 
@@ -79,7 +156,7 @@ class FeatureSelection:
 
         ### TODO: This should be after VIF
         # Save features
-        list_features_path = f"list_features{f'_fold{fold}' if fold is not None else ''}.txt"
+        list_features_path = f"list_features{f'_fold{self.fold}' if self.fold is not None else ''}.txt"
         with open(self.prefix.joinpath(list_features_path), 'w') as f:
             for feature in self.df.columns.values.tolist():
                 f.write(feature + "\n")

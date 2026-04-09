@@ -16,6 +16,7 @@
 # Import the necessary packages
 import genoml.preprocessing.utils as preprocessing_utils
 import numpy as np
+import pandas as pd
 import pickle
 import sys
 from genoml import utils, dependencies
@@ -28,8 +29,9 @@ class Munge:
     @utils.DescriptionLoader.function_description("info", cmd="Munging")
     def __init__(
         self, prefix, impute_type, geno_path, pheno_path, addit_path, geno_test_path, pheno_test_path, 
-        addit_test_path, skip_prune, r2, n_trees, gwas_paths, p_gwas, vif_thresh, vif_iter, umap_reduce, 
-        adjust_data, adjust_normalize, target_features, confounders, confounders_test, n_outer_cv, random_state, data_type,
+        addit_test_path, skip_prune, r2, n_trees, gwas_paths, p_gwas, vif_thresh, vif_iter, pearson_threshold, 
+        ols_threshold, umap_reduce, adjust_data, adjust_normalize, target_features, confounders, 
+        confounders_test, n_outer_cv, random_state, data_type,
     ):
         self.start = time()
         utils.DescriptionLoader.print(
@@ -48,6 +50,8 @@ class Munge:
             p_gwas = p_gwas, 
             vif_thresh = vif_thresh, 
             vif_iter = vif_iter, 
+            pearson_threshold = pearson_threshold,
+            ols_threshold = ols_threshold,
             impute_type = impute_type, 
             umap_reduce = umap_reduce,
             n_outer_cv = n_outer_cv,
@@ -71,8 +75,10 @@ class Munge:
         self.n_trees = n_trees
         self.gwas_paths = gwas_paths
         self.p_gwas = p_gwas
-        self.vif_thresh = vif_thresh
         self.vif_iter = vif_iter
+        self.vif_thresh = vif_thresh
+        self._pearson_threshold = pearson_threshold
+        self._ols_threshold = ols_threshold
         self.umap_reduce = umap_reduce
         self.adjust_data = adjust_data
         self.adjust_normalize = adjust_normalize
@@ -112,7 +118,7 @@ class Munge:
                 random_state=self._random_state,
             )
             self.df_merged_cv_dict = {}
-            if data_type == "c":
+            if self.data_type == "c":
                 self.df_merged["PHENO_bin"] = pd.qcut(
                     self.df_merged["PHENO"],
                     q = max(2, min(10, len(self.df_merged) // self.n_outer_cv)),
@@ -181,6 +187,8 @@ class Munge:
             self.vif_iter, 
             self.vif_thresh, 
             100,
+            self._pearson_threshold, 
+            self._ols_threshold, 
             self._random_state,
             fold=fold,
         )

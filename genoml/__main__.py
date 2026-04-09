@@ -25,21 +25,16 @@ from datetime import datetime
 from genoml import utils, dependencies
 from pathlib import Path
 
-
-import polars as pl
-df = pl.read_csv("NABEC_CpGs_hap1.tsv", separator="\t")
-df = df.select([col for col in df.columns if col.endswith("modFraction")])
-
 ### Make sure this works for discrete and multiclass too
 ### Add parameter for random state that is applied everywhere in GenoML
-### TODO: Add option for stratifying cross-validations
-### TODO: Decide between "run_prefix" and "prefix"
-### TODO: Create variable for outer_cv instead of always checking if something is a list
+### Add option for stratifying cross-validations
+### Decide between "run_prefix" and "prefix"
+### Create variable for outer_cv instead of always checking if something is a list
+### Add promoter filtering directly into GenoML
 
 ### TODO: Add stratification setting for cross validation and train/test split steps
 ### TODO: Look into which data are "withheld" during training and tuning
 ### TODO: Check file extensions (txt vs tsv)
-### TODO: In munging, look into difference between n_outer_cv and self.n_outer_cv
 ### TODO: Get rid of convergencewarning messages in tuning step
 ### TODO: If someone tries testing without munging/harmonizing a test dataset, throw an exception instead of the user getting an error message
 ### TODO: If using outer CV, add VotingRegressor for the final model to take the average of each prediction
@@ -49,6 +44,8 @@ df = df.select([col for col in df.columns if col.endswith("modFraction")])
 ### TODO: Check if additional_sumstats is the same across all modules
 ### TODO: Check all possible model classes to make sure they all work and all their hyperparam combinations are compatible with tuning
 ### TODO: Test discrete and multiclass on real datasets to make sure they actually work well
+### TODO: Update README
+### TODO: Update docstrings
 
 
 
@@ -144,9 +141,9 @@ def handle_multiclass_supervised():
 def handle_continuous_supervised_munge():
     handle_endpoints("genoml continuous supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
-                      "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "umap_reduce",
-                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test", 
-                      "n_outer_cv", "random_state"],
+                      "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "pearson_threshold", 
+                      "ols_threshold", "umap_reduce", "adjust_data", "adjust_normalize", "target_features", 
+                      "confounders", "confounders_test", "n_outer_cv", "random_state"],
                       functools.partial(preprocessing.munge, data_type="c"), 3)
 
 
@@ -178,9 +175,9 @@ def handle_continuous_supervised_test():
 def handle_discrete_supervised_munge():
     handle_endpoints("genoml discrete supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
-                      "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "umap_reduce",
-                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test", 
-                      "n_outer_cv", "random_state"],
+                      "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "pearson_threshold", 
+                      "ols_threshold", "umap_reduce", "adjust_data", "adjust_normalize", "target_features", 
+                      "confounders", "confounders_test", "n_outer_cv", "random_state"],
                       functools.partial(preprocessing.munge, data_type="d"), 3)
 
               
@@ -211,9 +208,9 @@ def handle_discrete_supervised_test():
 def handle_multiclass_supervised_munge():
     handle_endpoints("genoml multiclass supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
-                      "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "umap_reduce",
-                      "adjust_data", "adjust_normalize", "target_features", "confounders", "confounders_test", 
-                      "n_outer_cv", "random_state"],
+                      "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "pearson_threshold", 
+                      "ols_threshold", "umap_reduce", "adjust_data", "adjust_normalize", "target_features", 
+                      "confounders", "confounders_test", "n_outer_cv", "random_state"],
                       functools.partial(preprocessing.munge, data_type="d"), 3)
 
 
@@ -485,6 +482,22 @@ def add_default_flag(parser, flag_name):
             default=0,
             help="Iterator: (integer). How many iterations of VIF pruning of features do you want to run. "
                  "To save time VIF is run in randomly assorted chunks of 1000 features per iteration. [default: 0].",
+        )
+
+    elif flag_name == "pearson_threshold":
+        parser.add_argument(
+            "--pearson_threshold", 
+            type=float, 
+            default=0,
+            help="Threshold to use for Pearson correlation filtering. [default: 0].",
+        )
+
+    elif flag_name == "ols_threshold":
+        parser.add_argument(
+            "--ols_threshold", 
+            type=float, 
+            default=0,
+            help="p-value threshold to use for OLS filtering. [default: 0].",
         )
 
     elif flag_name == "impute_type":

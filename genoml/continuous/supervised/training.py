@@ -32,6 +32,7 @@ class Train:
 
         ### TODO: Add condition for if nothing is there, in which case they have not munged
         if Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5").exists():
+            self._is_using_outer_cv = False
             df_train = utils.read_munged_data(Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5"))
             x_train, x_valid, y_train, y_valid = utils.train_valid_split(df_train, train_split, random_state)
             self._x_train = x_train.drop(columns=["ID"])
@@ -41,6 +42,7 @@ class Train:
             self._y_train = y_train
             self._y_valid = y_valid
         elif Path(prefix).joinpath("Munge").joinpath(f"train_dataset_fold1.h5").exists():
+            self._is_using_outer_cv = True
             self._x_train = []
             self._x_valid = []
             self._y_train = []

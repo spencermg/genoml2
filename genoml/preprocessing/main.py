@@ -23,13 +23,15 @@ from genoml.preprocessing.munging import Munge
 ### TODO: Look into recoding genotype data differently -- like plink additive vs hethom?
 def munge(
     prefix, impute_type, geno_path, pheno_path, addit_path, geno_test_path, pheno_test_path, 
-    addit_test_path, skip_prune, r2, n_est, gwas_paths, p_gwas, vif_thresh, vif_iter, umap_reduce, 
-    adjust_data, adjust_normalize, target_features, confounders, confounders_test, n_outer_cv, random_state, data_type,
+    addit_test_path, skip_prune, r2, n_est, gwas_paths, p_gwas, vif_thresh, vif_iter, pearson_threshold, 
+    ols_threshold, umap_reduce, adjust_data, adjust_normalize, target_features, confounders, 
+    confounders_test, n_outer_cv, random_state, data_type,
 ):
     munger = Munge(
         prefix, impute_type, geno_path, pheno_path, addit_path, geno_test_path, pheno_test_path, 
-        addit_test_path, skip_prune, r2, n_est, gwas_paths, p_gwas, vif_thresh, vif_iter, umap_reduce, 
-        adjust_data, adjust_normalize, target_features, confounders, confounders_test, n_outer_cv, random_state, data_type,
+        addit_test_path, skip_prune, r2, n_est, gwas_paths, p_gwas, vif_thresh, vif_iter, pearson_threshold, 
+        ols_threshold, umap_reduce, adjust_data, adjust_normalize, target_features, confounders, 
+        confounders_test, n_outer_cv, random_state, data_type,
     )
 
     if munger.n_outer_cv < 2:
