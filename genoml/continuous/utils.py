@@ -46,7 +46,6 @@ def export_prediction_data(out_dir, ids, step, algorithm, y, x, is_using_outer_c
 
         # Combine all folds
         combined_results = pd.concat(all_results, ignore_index=True)
-
         combined_results.to_csv(
             out_dir.joinpath(f"{step}_predictions.txt"),
             index=False,
