@@ -14,6 +14,7 @@
 # ==============================================================================
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import statsmodels.formula.api as sm
@@ -22,45 +23,75 @@ from sklearn import metrics
 
 
 def export_prediction_data(out_dir, ids, step, algorithm, y, x, is_using_outer_cv, y_withheld=None, x_withheld=None, ids_withheld=None):
-
     if is_using_outer_cv:
-        all_results = []
-        all_withheld_results = []
+        _export_prediction_data_cv(out_dir, ids, step, algorithm, y, x, y_withheld, x_withheld, ids_withheld)
+    else:
+        _export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld, x_withheld, ids_withheld)
 
-        for fold, algo in enumerate(algorithm):
-            results, withheld_results = _collect_prediction_data(
-                ids[fold], 
-                step, 
-                algo, 
-                y[fold], 
-                x[fold],
-                y_withheld=y_withheld[fold] if y_withheld is not None else None,
-                x_withheld=x_withheld[fold] if x_withheld is not None else None,
-                ids_withheld=ids_withheld[fold] if ids_withheld is not None else None,
-                fold=fold,
-            )
 
-            all_results.append(results)
-            if withheld_results is not None:
-                all_withheld_results.append(withheld_results)
+def _export_prediction_data_cv(out_dir, ids, step, algorithm, y, x, y_withheld, x_withheld, ids_withheld):
+    """
+    Save table with predicted vs. reported phenotypes for each sample and generate regression model, using cross-validation.
 
-        # Combine all folds
-        combined_results = pd.concat(all_results, ignore_index=True)
-        combined_results.to_csv(
-            out_dir.joinpath(f"{step}_predictions.txt"),
+    Args:
+        out_dir (pathlib.Path): Path to output directory.
+        ids (numpy.ndarray): Array of sample IDs.
+        step (str): Step of the GenoML workflow. 
+        y (numpy.ndarray): Array of reported phenotypes for each training sample.
+        x (numpy.ndarray): Array of input data for each training sample.
+        y_withheld (numpy.ndarray, optional): Array of reported phenotypes for each validation sample.
+        x_withheld (numpy.ndarray, optional): Array of input data for each validation sample.
+        ids_withheld (numpy.ndarray): Array of sample IDs for each validation sample.
+    """
+
+    # Store prediction results for each fold
+    all_results = []
+    all_withheld_results = []
+
+
+    for fold, algo in enumerate(algorithm):
+        results, withheld_results = _collect_prediction_data(
+            ids[fold], 
+            step, 
+            algo, 
+            y[fold], 
+            x[fold],
+            y_withheld=y_withheld[fold] if y_withheld is not None else None,
+            x_withheld=x_withheld[fold] if x_withheld is not None else None,
+            ids_withheld=ids_withheld[fold] if ids_withheld is not None else None,
+            fold=fold,
+        )
+        all_results.append(results)
+        if step == "training":
+            all_withheld_results.append(withheld_results)
+
+    # Combine all folds
+    combined_results = pd.concat(all_results, ignore_index=True)
+    combined_results.to_csv(
+        out_dir.joinpath(f"{step}_predictions.tsv"),
+        index=False,
+        sep="\t",
+    )
+    if step == "training":
+        combined_withheld_results = pd.concat(all_withheld_results, ignore_index=True)
+        combined_withheld_results.to_csv(
+            out_dir.joinpath(f"{step}_predictions_withheld.tsv"),
             index=False,
-            sep="\t"
+            sep="\t",
         )
 
-        # Plot combined
-        _plot_combined_results(out_dir, combined_results)
-
-        # Still do per-fold regression summaries
-        for fold_df in all_results:
-            _run_regression_summary(out_dir, fold_df)
-
-    else:
-        _export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld=y_withheld, x_withheld=x_withheld)
+    # Plot combined
+    _plot_combined_results(
+        out_dir.joinpath(f"regression_summary.tsv"),
+        out_dir.joinpath(f"regression.png"), 
+        combined_results,
+    )
+    if step == "training":
+        _plot_combined_results(
+            out_dir.joinpath(f"regression_summary_withheld.tsv"),
+            out_dir.joinpath("regression_withheld.png"), 
+            combined_withheld_results,
+        )
 
 
 def _collect_prediction_data(ids, step, algorithm, y, x, y_withheld=None, x_withheld=None, ids_withheld=None, fold=None):
@@ -71,7 +102,7 @@ def _collect_prediction_data(ids, step, algorithm, y, x, y_withheld=None, x_with
         "ID": ids,
         "REPORTED": y,
         "PREDICTED": y_predicted,
-        "fold": fold + 1
+        "fold": fold + 1,
     })
 
     withheld_results = None
@@ -83,34 +114,52 @@ def _collect_prediction_data(ids, step, algorithm, y, x, y_withheld=None, x_with
             "ID": ids_withheld,
             "REPORTED": y_withheld,
             "PREDICTED": y_withheld_predicted,
-            "fold": fold + 1
+            "fold": fold + 1,
         })
 
     return results, withheld_results
 
 
-def _plot_combined_results(out_dir, df):
+def _plot_combined_results(regression_summary_path, regression_plot_path, df):
 
     plt.figure()
 
+    # Plot reported vs predicted value for each sample
     sns.scatterplot(
         data=df,
         x="REPORTED",
         y="PREDICTED",
         style="fold",
         hue="fold",
-        palette="tab10"
+        palette="tab10",
     )
 
-    # Fit overall regression line
+    # Fit overall regression line and add it to the plot
     reg_model = sm.ols("REPORTED ~ PREDICTED", data=df).fit()
-
+    with open(regression_summary_path, "w") as f:
+        f.write(reg_model.summary().as_csv().replace(",", "\t"))
     sns.regplot(
         data=df,
         x="REPORTED",
         y="PREDICTED",
         scatter=False,
-        color="black"
+        color="black",
+        label="Best-fit trendline",
+    )
+
+    # Add dashed line at y=x
+    ax = plt.gca()
+    lims = [
+        np.min([ax.get_xlim(), ax.get_ylim()]),
+        np.max([ax.get_xlim(), ax.get_ylim()]),
+    ]
+    ax.plot(
+        lims, 
+        lims, 
+        'k--', 
+        alpha=0.5, 
+        zorder=0, 
+        label="Predicted = Reported",
     )
 
     plt.text(
@@ -122,45 +171,13 @@ def _plot_combined_results(out_dir, df):
         fontsize=14,
     )
 
-    plt.savefig(out_dir.joinpath("regression.png"), dpi=600)
+    plt.legend(fontsize=8)
+
+    plt.savefig(regression_plot_path, dpi=600)
     plt.clf()
 
 
-def _run_regression_summary(out_dir, df):
-
-    fold = df["fold"].iloc[0]
-
-    reg_model = sm.ols("REPORTED ~ PREDICTED", data=df).fit()
-
-    with open(out_dir.joinpath(f"regression_summary_fold{fold}.txt"), "w") as f:
-        f.write(reg_model.summary().as_csv().replace(",", "\t"))
-
-
-# def export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld=None, x_withheld=None):
-#     """
-#     Save table with predicted vs. reported phenotypes for each sample and generate regression model.
-
-#     Args:
-#         out_dir (pathlib.Path): Path to output directory.
-#         ids (numpy.ndarray): Array of sample IDs.
-#         step (str): Step of the GenoML workflow. 
-#         y (numpy.ndarray): Array of reported phenotypes for each training sample.
-#         x (numpy.ndarray): Array of input data for each training sample.
-#         y_withheld (numpy.ndarray, optional): Array of reported phenotypes for each validation sample (Default: None).
-#         x_withheld (numpy.ndarray, optional): Array of input data for each validation sample (Default: None).
-#     """
-
-#     if is_using_outer_cv:
-#         for fold, algo in enumerate(algorithm):
-#             if y_withheld is not None and x_withheld is not None:
-#                 _export_prediction_data(out_dir, ids[fold], step, algo, y[fold], x[fold], y_withheld=y_withheld[fold], x_withheld=x_withheld[fold], fold=fold)
-#             else:
-#                 _export_prediction_data(out_dir, ids[fold], step, algo, y[fold], x[fold], y_withheld=None, x_withheld=None, fold=fold)
-#     else:
-#         _export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld=y_withheld, x_withheld=x_withheld)
-
-
-def _export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld=None, x_withheld=None, fold=None):
+def _export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld, x_withheld, ids_withheld):
     """
     Save table with predicted vs. reported phenotypes for each sample and generate regression model.
 
@@ -170,12 +187,10 @@ def _export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld=None
         step (str): Step of the GenoML workflow. 
         y (numpy.ndarray): Array of reported phenotypes for each training sample.
         x (numpy.ndarray): Array of input data for each training sample.
-        y_withheld (numpy.ndarray, optional): Array of reported phenotypes for each validation sample (Default: None).
-        x_withheld (numpy.ndarray, optional): Array of input data for each validation sample (Default: None).
-        fold (int): If using outer cross-validation, fold number corresponding to current data/algorithm (Default: None).
+        y_withheld (numpy.ndarray, optional): Array of reported phenotypes for each validation sample.
+        x_withheld (numpy.ndarray, optional): Array of input data for each validation sample.
+        ids_withheld (numpy.ndarray): Array of sample IDs for each validation sample.
     """
-
-    suffix = f"_fold{fold+1}" if fold is not None else ""
 
     y_predicted = algorithm.predict(x)
     if x_withheld is not None:
@@ -190,30 +205,30 @@ def _export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld=None
     )
     with utils.DescriptionLoader.context(
         "utils/export_predictions",
-        output_path=out_dir.joinpath(f"{step}_predictions{suffix}.txt"), 
+        output_path=out_dir.joinpath(f"{step}_predictions.txt"), 
         data=results.head(),
     ):
-        results.to_csv(out_dir.joinpath(f"{step}_predictions{suffix}.txt"), index=False, sep="\t")
+        results.to_csv(out_dir.joinpath(f"{step}_predictions.txt"), index=False, sep="\t")
 
     # Withheld results, if applicable.
     if step == "training":
         results = pd.DataFrame(
-            zip(ids, y_withheld, y_withheld_predicted), 
+            zip(ids_withheld, y_withheld, y_withheld_predicted), 
             columns=output_columns,
         )
         with utils.DescriptionLoader.context(
             "utils/export_predictions/withheld_data",
-            output_path=out_dir.joinpath(f"withheld_predictions{suffix}.txt"), 
+            output_path=out_dir.joinpath(f"withheld_predictions.txt"), 
             data=results.head(),
         ):
-            results.to_csv(out_dir.joinpath(f"withheld_predictions{suffix}.txt"), index=False, sep="\t")
+            results.to_csv(out_dir.joinpath(f"withheld_predictions.txt"), index=False, sep="\t")
 
     # Regression model on withheld results.
     reg_model = sm.ols(formula=f'REPORTED ~ PREDICTED', data=results)
     fitted = reg_model.fit()
     with utils.DescriptionLoader.context(
         "utils/export_predictions/plot",
-        output_path=out_dir.joinpath(f"regression{suffix}.png"), 
+        output_path=out_dir.joinpath(f"regression.png"), 
         data=fitted.summary(),
     ):
         sns_plot = sns.regplot(
@@ -234,9 +249,9 @@ def _export_prediction_data(out_dir, ids, step, algorithm, y, x, y_withheld=None
         sns_plot.set_xlabel(f"Reported", fontsize=16)
         sns_plot.set_ylabel(f"Predicted", fontsize=16)
 
-        sns_plot.figure.savefig(out_dir.joinpath(f"regression{suffix}.png"), dpi=600)
+        sns_plot.figure.savefig(out_dir.joinpath(f"regression.png"), dpi=600)
         plt.clf()
-        with open(out_dir.joinpath(f"regression_summary{suffix}.txt"), "w") as f:
+        with open(out_dir.joinpath(f"regression_summary.txt"), "w") as f:
             f.write(fitted.summary().as_csv().replace(",", "\t"))
 
 

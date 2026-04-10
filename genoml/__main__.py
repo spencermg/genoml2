@@ -31,9 +31,10 @@ from pathlib import Path
 ### Decide between "run_prefix" and "prefix"
 ### Create variable for outer_cv instead of always checking if something is a list
 ### Add promoter filtering directly into GenoML
+### Add stratification by phenotype for train/test split
+### Look into which data are "withheld" during training and tuning
+### Add y=x trendline to regression plots
 
-### TODO: Add stratification setting for cross validation and train/test split steps
-### TODO: Look into which data are "withheld" during training and tuning
 ### TODO: Check file extensions (txt vs tsv)
 ### TODO: Get rid of convergencewarning messages in tuning step
 ### TODO: If someone tries testing without munging/harmonizing a test dataset, throw an exception instead of the user getting an error message
@@ -44,6 +45,8 @@ from pathlib import Path
 ### TODO: Check if additional_sumstats is the same across all modules
 ### TODO: Check all possible model classes to make sure they all work and all their hyperparam combinations are compatible with tuning
 ### TODO: Test discrete and multiclass on real datasets to make sure they actually work well
+### TODO: Add stratification by phenotype in tuning CV
+### TODO: Add stratification parameter to define features to stratify by?
 ### TODO: Update README
 ### TODO: Update docstrings
 
