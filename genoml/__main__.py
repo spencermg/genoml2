@@ -34,19 +34,18 @@ from pathlib import Path
 ### Add stratification by phenotype for train/test split
 ### Look into which data are "withheld" during training and tuning
 ### Add y=x trendline to regression plots
+### Clean up continuous utils where I generate regression plot 
 
 ### TODO: Check file extensions (txt vs tsv)
 ### TODO: Get rid of convergencewarning messages in tuning step
 ### TODO: If someone tries testing without munging/harmonizing a test dataset, throw an exception instead of the user getting an error message
-### TODO: If using outer CV, add VotingRegressor for the final model to take the average of each prediction
-### TODO: Why are number of samples/promoters different for my train/test and full datasets?
-### TODO: Clean up continuous utils where I generate regression plot 
-### TODO: Look into combining some of the plots/tables across folds in discrete and multiclass
-### TODO: Check if additional_sumstats is the same across all modules
-### TODO: Check all possible model classes to make sure they all work and all their hyperparam combinations are compatible with tuning
-### TODO: Test discrete and multiclass on real datasets to make sure they actually work well
 ### TODO: Add stratification by phenotype in tuning CV
 ### TODO: Add stratification parameter to define features to stratify by?
+### TODO: Check if additional_sumstats is the same across all modules
+### TODO: If using outer CV, add VotingRegressor for the final model to take the average of each prediction
+### TODO: Check all possible model classes to make sure they all work and all their hyperparam combinations are compatible with tuning
+### TODO: Test discrete and multiclass on real datasets to make sure they actually work well
+### TODO: Look into combining some of the plots/tables across folds in discrete and multiclass
 ### TODO: Update README
 ### TODO: Update docstrings
 
