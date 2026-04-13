@@ -18,6 +18,7 @@ import joblib
 import json
 import os
 import pandas as pd
+import sys
 import textwrap
 import time
 import traceback
@@ -25,6 +26,9 @@ from pathlib import Path
 from sklearn import model_selection
 from skopt import BayesSearchCV
 from skopt.space import Real, Integer, Categorical
+
+os.environ["PYTHONWARNINGS"] = "ignore"
+sys.stderr = open(os.devnull, 'w')
 
 __author__ = 'Sayed Hadi Hashemi'
 

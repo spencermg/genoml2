@@ -31,7 +31,6 @@ class Test:
             prefix=prefix,
         )
 
-        ### TODO: Add condition for if nothing is there, in which case they have not munged
         if Path(prefix).joinpath("Munge").joinpath(f"test_dataset.h5").exists():
             self._is_using_outer_cv = False
             df_test = utils.read_munged_data(Path(prefix).joinpath("Munge").joinpath(f"test_dataset.h5"))
@@ -54,6 +53,10 @@ class Test:
                 self._x_test.append(df_test.drop(columns=["PHENO", "ID"]))
                 self._algorithm.append(joblib.load(Path(prefix).joinpath(f"model_fold{fold+1}.joblib")))
             self._algorithm_name = utils.get_algorithm_name(self._algorithm[0])
+        else:
+            raise FileNotFoundError(
+                f"No munged data found at {prefix}/Munge. Please run the munge step first."
+            )
 
         self._prefix = Path(prefix).joinpath("Test")
         if not self._prefix.is_dir():

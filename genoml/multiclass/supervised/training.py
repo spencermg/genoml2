@@ -32,7 +32,6 @@ class Train:
             metric_max=metric_max,
         )
 
-        ### TODO: Add condition for if nothing is there, in which case they have not munged
         if Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5").exists():
             self._is_using_outer_cv = False
             df_train = utils.read_munged_data(Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5"))
@@ -61,6 +60,10 @@ class Train:
                 self._y_valid.append(y_valid.drop(columns=["ID"]))
                 self._ids_train.append(x_train.ID)
                 self._ids_valid.append(x_valid.ID)
+        else:
+            raise FileNotFoundError(
+                f"No munged data found at {prefix}/Munge. Please run the munge step first."
+            )
 
         candidate_algorithms = get_candidate_algorithms("discrete_supervised", random_state)
 

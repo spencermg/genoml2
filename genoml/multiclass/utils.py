@@ -188,7 +188,7 @@ def _export_prediction_data(out_dir, algorithm, y, x, ids, num_classes, y_train=
             y_train,
             y_train_pred,
             ids_train,
-            out_dir.joinpath(f"train_predictions{suffix}.txt"),
+            out_dir.joinpath(f"train_predictions{suffix}.tsv"),
             num_classes,
             dataset="training",
         )
@@ -197,7 +197,7 @@ def _export_prediction_data(out_dir, algorithm, y, x, ids, num_classes, y_train=
         y,
         y_pred_prob,
         ids,
-        out_dir.joinpath(f"predictions{suffix}.txt"),
+        out_dir.joinpath(f"predictions{suffix}.tsv"),
         num_classes,
     )
 
@@ -224,7 +224,7 @@ def _additional_sumstats(algorithm_name, y_test, y_pred, prefix, fold=None):
         data=[[algorithm_name] + list(_calculate_accuracy_scores(y_test, y_pred))], 
         columns=["Algorithm", "AUC", "Accuracy", "Balanced_Accuracy", "Log_Loss", "Sensitivity", "Specificity", "PPV", "NPV"],
     )
-    log_outfile = prefix.joinpath(f"performance_metrics{suffix}.txt")
+    log_outfile = prefix.joinpath(f"performance_metrics{suffix}.tsv")
     log_table.to_csv(log_outfile, index=False, sep="\t")
 
 

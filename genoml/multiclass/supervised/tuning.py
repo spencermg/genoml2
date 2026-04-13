@@ -35,7 +35,6 @@ class Tune:
             cv_count=cv_count,
         )
 
-        ### TODO: Add condition for if nothing is there, in which case they have not munged
         if Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5").exists():
             self._is_using_outer_cv = False
             df_tune = utils.read_munged_data(Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5"))
@@ -60,6 +59,10 @@ class Tune:
                 self._x_tune.append(df_tune.drop(columns=["PHENO", "ID"]))
                 self._algorithm.append(joblib.load(model_path))
             algorithm_name = utils.get_algorithm_name(self._algorithm[0])
+        else:
+            raise FileNotFoundError(
+                f"No munged data found at {prefix}/Munge. Please run the munge step first."
+            )
 
         dict_hyperparams = utils.get_tuning_hyperparams("multiclass", random_state)
 

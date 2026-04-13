@@ -35,10 +35,10 @@ from pathlib import Path
 ### Look into which data are "withheld" during training and tuning
 ### Add y=x trendline to regression plots
 ### Clean up continuous utils where I generate regression plot 
+### Check file extensions (txt vs tsv)
+### Get rid of convergencewarning messages in tuning step
+### If someone tries testing without munging/harmonizing a test dataset, throw an exception instead of the user getting an error message
 
-### TODO: Check file extensions (txt vs tsv)
-### TODO: Get rid of convergencewarning messages in tuning step
-### TODO: If someone tries testing without munging/harmonizing a test dataset, throw an exception instead of the user getting an error message
 ### TODO: Add stratification by phenotype in tuning CV
 ### TODO: Add stratification parameter to define features to stratify by?
 ### TODO: Check if additional_sumstats is the same across all modules
