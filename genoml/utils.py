@@ -420,7 +420,7 @@ def _summarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, 
         "Max_CV_Score" : [cv_baseline.max(), cv_tuned.max()],
     })
     df_cv_summary.rename(index={0: "Baseline", 1: "BestTuned"}, inplace=True)
-    log_outfile = out_dir.joinpath(f"cv_summary{suffix}.txt")
+    log_outfile = out_dir.joinpath(f"cv_summary{suffix}.tsv")
     df_cv_summary.to_csv(log_outfile, sep="\t")
 
     print(f"Here is the cross-validation summary of your best tuned model hyperparameters{f' for fold {fold+1}' if fold is not None else ''}...")
@@ -485,7 +485,7 @@ def _report_best_tuning(out_dir, cv_results, n_top, fold=None):
         print(f"Mean Validation Score: {current_iteration['mean_test_score']:.3f} (std: {current_iteration['std_test_score']:.3f})")
         print(f"Parameters: {current_iteration['params']}")
         print("")
-    log_outfile = out_dir.joinpath(f"tuning_summary{suffix}.txt")
+    log_outfile = out_dir.joinpath(f"tuning_summary{suffix}.tsv")
     cv_results.to_csv(log_outfile, index=False, sep="\t")
     print(f"We are exporting a summary table of the top {n_top} iterations of the hyperparameter tuning step and its parameters here {log_outfile}.")
 

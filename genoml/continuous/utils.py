@@ -86,14 +86,14 @@ def export_prediction_data(out_dir, ids, step, algorithm, y, x, is_using_outer_c
 
     # Plot results
     _plot_results(
-        out_dir.joinpath(f"regression_summary.tsv"),
+        out_dir.joinpath(f"regression_summary.txt"),
         out_dir.joinpath(f"regression.png"), 
         results,
         is_using_outer_cv,
     )
     if step == "training":
         _plot_results(
-            out_dir.joinpath(f"regression_summary_withheld.tsv"),
+            out_dir.joinpath(f"regression_summary_withheld.txt"),
             out_dir.joinpath("regression_withheld.png"), 
             withheld_results,
             is_using_outer_cv,
@@ -186,7 +186,7 @@ def _additional_sumstats(algorithm_name, y_test, y_pred, prefix, fold=None):
         data=[[algorithm_name] + list(_calculate_accuracy_scores(y_test, y_pred))], 
         columns=["Algorithm", "Explained Variance", "Mean Squared Error", "Median Absolute Error", "R-Squared_Error"],
     )
-    log_outfile = prefix.joinpath(f"performance_metrics{suffix}.txt")
+    log_outfile = prefix.joinpath(f"performance_metrics{suffix}.tsv")
     log_table.to_csv(log_outfile, index=False, sep="\t")
 
 
