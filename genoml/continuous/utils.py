@@ -26,25 +26,22 @@ from sklearn import metrics
 def export_prediction_data(out_dir, ids, step, algorithm, y, x, is_using_outer_cv, y_withheld=None, x_withheld=None, ids_withheld=None):
     if is_using_outer_cv:
         # Store prediction results for each fold
-        results = []
-        withheld_results = []
+        results_cv = []
         for fold, algo in enumerate(algorithm):
             y_predicted = algo.predict(x[fold])
-            results.append(pd.DataFrame(
-                zip(ids[fold], y[fold], y_predicted, repeat(fold + 1)), 
-                columns=["ID", "REPORTED", "PREDICTED", "FOLD"],
-            ))
-            if x_withheld is not None:
-                y_withheld_predicted = algo.predict(x_withheld[fold])
-                withheld_results.append(pd.DataFrame(
-                    zip(ids_withheld[fold], y_withheld[fold], y_withheld_predicted, repeat(fold + 1)), 
+            if fold == 0 and step != "testing":
+                results = pd.DataFrame(
+                    zip(ids[fold], y[fold], y_predicted), 
+                    columns=["ID", "REPORTED", "PREDICTED"],
+                )
+            else:
+                results_cv.append(pd.DataFrame(
+                    zip(ids[fold], y[fold], y_predicted, repeat(fold)), 
                     columns=["ID", "REPORTED", "PREDICTED", "FOLD"],
                 ))
 
         # Combine all folds
-        results = pd.concat(results, ignore_index=True)
-        if step == "training":
-            withheld_results = pd.concat(withheld_results, ignore_index=True)
+        results_cv = pd.concat(results_cv, ignore_index=True)
             
     else:
         y_predicted = algorithm.predict(x)
@@ -62,16 +59,44 @@ def export_prediction_data(out_dir, ids, step, algorithm, y, x, is_using_outer_c
                 columns=["ID", "REPORTED", "PREDICTED"],
             )
     
-    with utils.DescriptionLoader.context(
-        "utils/export_predictions",
-        output_path=out_dir.joinpath(f"{step}_predictions.tsv"), 
-        data=results.head(),
-    ):
-        results.to_csv(
-            out_dir.joinpath(f"{step}_predictions.tsv"), 
-            index=False, 
-            sep="\t",
+    if step != "testing" or (step == "testing" and not is_using_outer_cv):
+        with utils.DescriptionLoader.context(
+            "utils/export_predictions",
+            output_path=out_dir.joinpath(f"{step}_predictions.tsv"), 
+            data=results.head(),
+        ):
+            results.to_csv(
+                out_dir.joinpath(f"{step}_predictions.tsv"), 
+                index=False, 
+                sep="\t",
+            )
+
+        _plot_results(
+            out_dir.joinpath(f"regression_summary.txt"),
+            out_dir.joinpath(f"regression.png"), 
+            results,
+            False,
         )
+
+    if is_using_outer_cv:
+        with utils.DescriptionLoader.context(
+            "utils/export_predictions",
+            output_path=out_dir.joinpath(f"{step}_predictions_cv.tsv"), 
+            data=results_cv.head(),
+        ):
+            results_cv.to_csv(
+                out_dir.joinpath(f"{step}_predictions_cv.tsv"), 
+                index=False, 
+                sep="\t",
+            )
+
+        _plot_results(
+            out_dir.joinpath(f"regression_summary_cv.txt"),
+            out_dir.joinpath(f"regression_cv.png"), 
+            results_cv,
+            True,
+        )
+
     if step == "training":
         with utils.DescriptionLoader.context(
             "utils/export_predictions/withheld_data",
@@ -84,19 +109,11 @@ def export_prediction_data(out_dir, ids, step, algorithm, y, x, is_using_outer_c
                 sep="\t",
             )
 
-    # Plot results
-    _plot_results(
-        out_dir.joinpath(f"regression_summary.txt"),
-        out_dir.joinpath(f"regression.png"), 
-        results,
-        is_using_outer_cv,
-    )
-    if step == "training":
         _plot_results(
             out_dir.joinpath(f"regression_summary_withheld.txt"),
             out_dir.joinpath("regression_withheld.png"), 
             withheld_results,
-            is_using_outer_cv,
+            False,
         )
 
 

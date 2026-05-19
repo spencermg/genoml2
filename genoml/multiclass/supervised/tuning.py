@@ -20,6 +20,7 @@ import sys
 from genoml import utils
 from pathlib import Path
 from sklearn import metrics
+from sklearn.base import clone
 from sklearn.model_selection import StratifiedKFold
 from skopt.space import Categorical
 
@@ -44,25 +45,25 @@ class Tune:
             self._x_tune = df_tune.drop(columns=["PHENO", "ID"])
             self._algorithm = joblib.load(model_path)
             algorithm_name = utils.get_algorithm_name(self._algorithm)
-        elif Path(prefix).joinpath("Munge").joinpath(f"train_dataset_fold1.h5").exists():
-            self._is_using_outer_cv = True
-            self._y_tune = []
-            self._ids_tune = []
-            self._x_tune = []
-            self._algorithm = []
-            train_datasets = [f for f in Path(prefix).joinpath("Munge").iterdir() if f.is_file() and f.name.startswith("train_dataset")]
-            for fold, train_dataset in enumerate(train_datasets):
-                df_tune = utils.read_munged_data(train_dataset)
-                model_path = Path(prefix).joinpath(f"model_fold{fold+1}.joblib")
-                self._y_tune.append(df_tune.PHENO)
-                self._ids_tune.append(df_tune.ID)
-                self._x_tune.append(df_tune.drop(columns=["PHENO", "ID"]))
-                self._algorithm.append(joblib.load(model_path))
-            algorithm_name = utils.get_algorithm_name(self._algorithm[0])
         else:
             raise FileNotFoundError(
                 f"No munged data found at {prefix}/Munge. Please run the munge step first."
             )
+
+        if Path(prefix).joinpath("Munge").joinpath(f"train_dataset_fold1.h5").exists():
+            self._is_using_outer_cv = True
+            self._y_tune = [self._y_tune]
+            self._ids_tune = [self._ids_tune]
+            self._x_tune = [self._x_tune]
+            self._algorithm = [self._algorithm]
+            train_datasets = [f for f in Path(prefix).joinpath("Munge").iterdir() if f.is_file() and f.name.startswith("train_dataset_fold")]
+            for fold, train_dataset in enumerate(train_datasets):
+                df_tune = utils.read_munged_data(train_dataset)
+                self._y_tune.append(df_tune.PHENO)
+                self._ids_tune.append(df_tune.ID)
+                self._x_tune.append(df_tune.drop(columns=["PHENO", "ID"]))
+                self._algorithm.append(clone(joblib.load(model_path)))
+            algorithm_name = utils.get_algorithm_name(self._algorithm[0])
 
         dict_hyperparams = utils.get_tuning_hyperparams("multiclass", random_state)
 
@@ -93,7 +94,7 @@ class Tune:
         self._num_classes = None
 
         # Communicate to the user the best identified algorithm 
-        print(f"From previous analyses in the training phase, we've determined that the best "
+        print("From previous analyses in the training phase, we've determined that the best "
               f"algorithm for this application is {algorithm_name.replace('_', 'using ')}... so "
               "let's tune it up and see what gains we can make!")
 

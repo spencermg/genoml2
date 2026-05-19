@@ -39,15 +39,15 @@ from pathlib import Path
 ### Get rid of convergencewarning messages in tuning step
 ### If someone tries testing without munging/harmonizing a test dataset, throw an exception instead of the user getting an error message
 
-### TODO: Add stratification by phenotype in tuning CV
-### TODO: Add stratification parameter to define features to stratify by?
+### TODO: RE-NORMALIZE DURING HARMONIZATION
+### TODO: Add checks for training happening before tuning and testing
 ### TODO: Check if additional_sumstats is the same across all modules
-### TODO: If using outer CV, add VotingRegressor for the final model to take the average of each prediction
 ### TODO: Check all possible model classes to make sure they all work and all their hyperparam combinations are compatible with tuning
 ### TODO: Test discrete and multiclass on real datasets to make sure they actually work well
 ### TODO: Look into combining some of the plots/tables across folds in discrete and multiclass
 ### TODO: Update README
 ### TODO: Update docstrings
+### TODO: Add stratification by phenotype in tuning CV
 
 
 
@@ -345,7 +345,7 @@ def add_default_flag(parser, flag_name):
             '--n_outer_cv', 
             type=int, 
             default=0,
-            help='Number of outer cross validations: (integer likely greater than 3) for the pipeline. '
+            help='Number of outer cross validation folds: (integer likely greater than 3) for the pipeline. '
                  'Here we set the number of cross-validation runs for the algorithms [default: 0].',
         )
 
@@ -491,7 +491,7 @@ def add_default_flag(parser, flag_name):
             "--pearson_threshold", 
             type=float, 
             default=0,
-            help="Threshold to use for Pearson correlation filtering. [default: 0].",
+            help="Threshold to use for Pearson correlation filtering (0-1). [default: 0].",
         )
 
     elif flag_name == "ols_threshold":

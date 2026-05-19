@@ -31,7 +31,6 @@ class Train:
         )
 
         if Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5").exists():
-            self._is_using_outer_cv = False
             df_train = utils.read_munged_data(Path(prefix).joinpath("Munge").joinpath(f"train_dataset.h5"))
             x_train, x_valid, y_train, y_valid = utils.train_valid_split(df_train, train_split, random_state)
             self._x_train = x_train.drop(columns=["ID"])
@@ -40,24 +39,6 @@ class Train:
             self._ids_valid = x_valid.ID
             self._y_train = y_train
             self._y_valid = y_valid
-        elif Path(prefix).joinpath("Munge").joinpath(f"train_dataset_fold1.h5").exists():
-            self._is_using_outer_cv = True
-            self._x_train = []
-            self._x_valid = []
-            self._y_train = []
-            self._y_valid = []
-            self._ids_train = []
-            self._ids_valid = []
-            train_datasets = [f for f in Path(prefix).joinpath("Munge").iterdir() if f.is_file() and f.name.startswith("train_dataset")]
-            for train_dataset in train_datasets:
-                df_train = utils.read_munged_data(train_dataset)
-                x_train, x_valid, y_train, y_valid = utils.train_valid_split(df_train, train_split, random_state)
-                self._x_train.append(x_train.drop(columns=["ID"]))
-                self._x_valid.append(x_valid.drop(columns=["ID"]))
-                self._y_train.append(y_train.drop(columns=["ID"]))
-                self._y_valid.append(y_valid.drop(columns=["ID"]))
-                self._ids_train.append(x_train.ID)
-                self._ids_valid.append(x_valid.ID)
         else:
             raise FileNotFoundError(
                 f"No munged data found at {prefix}/Munge. Please run the munge step first."
@@ -92,7 +73,6 @@ class Train:
             self._x_valid, 
             self._y_valid, 
             self._column_names, 
-            self._is_using_outer_cv,
             continuous_utils.calculate_accuracy_scores,
         )
 
@@ -114,7 +94,6 @@ class Train:
         utils.export_model(
             self._prefix.parent, 
             self._best_algorithm,
-            self._is_using_outer_cv,
         )
 
 
@@ -127,7 +106,7 @@ class Train:
             self._best_algorithm,
             self._y_train, 
             self._x_train, 
-            self._is_using_outer_cv,
+            False,
             y_withheld = self._y_valid, 
             x_withheld = self._x_valid,
             ids_withheld = self._ids_valid,

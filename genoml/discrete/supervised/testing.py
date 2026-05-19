@@ -71,6 +71,7 @@ class Test:
             [x_test.values for x_test in self._x_test] if self._is_using_outer_cv else self._x_test.values, 
             self._algorithm,
             self._is_using_outer_cv,
+            is_testing=True,
         )
 
 
@@ -83,6 +84,7 @@ class Test:
             self._x_test,
             self._ids_test,
             self._is_using_outer_cv,
+            is_testing=True,
         )
 
 
@@ -95,4 +97,5 @@ class Test:
             self._algorithm,
             self._prefix,
             self._is_using_outer_cv,
+            is_testing=True,
         )

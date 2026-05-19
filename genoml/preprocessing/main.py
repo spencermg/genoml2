@@ -34,14 +34,16 @@ def munge(
         confounders_test, n_outer_cv, random_state, data_type,
     )
 
-    if munger.n_outer_cv < 2:
-        munger.create_merged_datasets()
-        munger.filter_shared_cols()
-        munger.apply_adjustments()
-        munger.feature_selection()
-        munger.filter_shared_cols()
-        munger.save_data()
-    else:
+    # Always munge the full dataset
+    munger.create_merged_datasets()
+    munger.filter_shared_cols()
+    munger.apply_adjustments()
+    munger.feature_selection()
+    munger.filter_shared_cols()
+    munger.save_data()
+
+    # If using cross-validation, also munge each fold separately
+    if munger.n_outer_cv > 1:
         munger.create_merged_datasets(n_outer_cv=munger.n_outer_cv)
         for fold in range(1, munger.n_outer_cv+1):
             munger.df_merged = munger.df_merged_cv_dict[fold]["train"]

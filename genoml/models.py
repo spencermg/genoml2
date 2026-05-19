@@ -21,7 +21,7 @@ from sklearn import discriminant_analysis, ensemble, linear_model, neighbors, ne
 CANDIDATE_ALGORITHMS = {
     "discrete_supervised": [
         lambda random_state: discriminant_analysis.LinearDiscriminantAnalysis(),
-        lambda random_state: discriminant_analysis.QuadraticDiscriminantAnalysis(),
+        # lambda random_state: discriminant_analysis.QuadraticDiscriminantAnalysis(),
         lambda random_state: ensemble.AdaBoostClassifier(random_state=random_state),
         lambda random_state: ensemble.BaggingClassifier(random_state=random_state),
         lambda random_state: ensemble.GradientBoostingClassifier(random_state=random_state),

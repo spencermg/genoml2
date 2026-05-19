@@ -34,7 +34,6 @@ class Adjuster:
         self.df_confounders = pd.read_csv(self.confounders, engine="python", sep=None, encoding="utf-8-sig")
         self.df_confounders["ID"] = self.df_confounders["ID"].astype(str)
         self.df_confounders = self.df_confounders.merge(self.df_merged[["ID"]], on="ID")
-        ### TODO: Should we impute or drop?
         self.df_confounders = self.df_confounders.fillna(
             self.df_confounders.mean(numeric_only=True)
         )

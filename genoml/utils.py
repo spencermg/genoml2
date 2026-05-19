@@ -330,7 +330,13 @@ def _tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv, rando
     )
 
     with Timer() as timer:
-        rand_search.fit(x, y)
+        try:
+            rand_search.fit(x, y)
+        except Exception as e:
+            print(f"ERROR during BayesSearchCV fit: {type(e).__name__}")
+            print(f"Error message: {str(e)}")
+            traceback.print_exc()
+            raise
     print(f"BayesSearchCV took {timer.elapsed():.2f} seconds for {n_iter:d} "
           "candidate parameter iterations.")
 
@@ -394,7 +400,7 @@ def _summarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, 
         Cross-validation results for the tuned model.
     """
 
-    suffix = f"_fold{fold+1}" if fold is not None else ""
+    suffix = f"_fold{fold}" if fold not in (None, 0) else ""
 
     cv_baseline = model_selection.cross_val_score(
         estimator = estimator_baseline, 
@@ -427,7 +433,7 @@ def _summarize_tune(out_dir, estimator_baseline, estimator_tune, x, y, scoring, 
     log_outfile = out_dir.joinpath(f"cv_summary{suffix}.tsv")
     df_cv_summary.to_csv(log_outfile, sep="\t")
 
-    print(f"Here is the cross-validation summary of your best tuned model hyperparameters{f' for fold {fold+1}' if fold is not None else ''}...")
+    print(f"Here is the cross-validation summary of your best tuned model hyperparameters{'' if fold is None else (' for the full dataset' if fold==0 else f' for fold {fold+1}')}...")
     print(f"{scoring} scores per cross-validation")
     print(cv_tuned)
     print(f"Mean cross-validation score:                        {cv_tuned.mean()}")
@@ -477,9 +483,9 @@ def _report_best_tuning(out_dir, cv_results, n_top, fold=None):
         fold (int): If using outer cross-validation, fold number corresponding to current data/algorithm (Default: None).
     """
 
-    suffix = f"_fold{fold+1}" if fold is not None else ""
+    suffix = f"_fold{fold}" if fold not in (None, 0) else ""
 
-    print(f"Here is a summary of the top 10 iterations of the hyperparameter tuning{f' for fold {fold+1}' if fold is not None else ''}...")
+    print(f"Here is a summary of the top 10 iterations of the hyperparameter tuning{'' if fold is None else (' for the full dataset' if fold==0 else f' for fold {fold+1}')}...")
     cv_results = pd.DataFrame(cv_results)
     cv_results.sort_values(by='rank_test_score', ascending=True, inplace=True)
     cv_results = cv_results.iloc[:n_top,:]
@@ -544,24 +550,24 @@ def _compare_tuning_performance(out_dir, cv_tuned, cv_baseline, algo_tuned, algo
         Predicted outputs from the chosen model.
     """
 
-    print("")
+    if fold == 0:
+        if cv_baseline.mean() >= cv_tuned.mean():
+            print("Based on comparisons of the default parameters to your hyperparameter tuned model, the baseline model actually performed better.")
+            print("Looks like the tune wasn't worth it, we suggest either extending the tune time or just using the baseline model for maximum performance.")
+            algorithm = algo_baseline
+            yield algorithm
 
-    if cv_baseline.mean() >= cv_tuned.mean():
-        print("Based on comparisons of the default parameters to your hyperparameter tuned model, the baseline model actually performed better.")
-        print("Looks like the tune wasn't worth it, we suggest either extending the tune time or just using the baseline model for maximum performance.")
-        print("")
-        print("Let's shut everything down, thanks for trying to tune your model with GenoML.")
-        algorithm = algo_baseline
-        yield algorithm
-
-    if cv_baseline.mean() < cv_tuned.mean():
-        print("Based on comparisons of the default parameters to your hyperparameter tuned model, the tuned model actually performed better.")
-        print("Looks like the tune was worth it, we suggest using this model for maximum performance, lets summarize and export this now.")
-        print("In most cases, if opting to use the tuned model, a separate test dataset is a good idea. GenoML has a module to fit models to external data.")
+        if cv_baseline.mean() < cv_tuned.mean():
+            print("Based on comparisons of the default parameters to your hyperparameter tuned model, the tuned model actually performed better.")
+            print("Looks like the tune was worth it, we suggest using this model for maximum performance, lets summarize and export this now.")
+            algorithm = algo_tuned
+            yield algorithm
+    
+    else:
         algorithm = algo_tuned
         yield algorithm
 
-    export_model(out_dir.parent, algorithm, False, fold=fold)
+    export_model(out_dir.parent, algorithm, fold=fold)
 
     y_predicted = None
     if x is not None:
@@ -595,7 +601,7 @@ def read_munged_data(file_path):
     return df
 
 
-def export_model(out_dir, algorithm, is_using_outer_cv, fold=None):
+def export_model(out_dir, algorithm, fold=None):
     """
     Export a fitted algorithm to a readable file.
 
@@ -605,20 +611,11 @@ def export_model(out_dir, algorithm, is_using_outer_cv, fold=None):
         fold (int): If using outer cross-validation, fold number corresponding to current data/algorithm (Default: None).
     """
 
-    if is_using_outer_cv:
-        for fold in range(len(algorithm)):
-            output_path = out_dir.joinpath(f"model_fold{fold+1}.joblib")
-            with DescriptionLoader.context(
-                "export_model",
-                output_path=output_path,
-            ):
-                joblib.dump(algorithm[fold], output_path)
-        return
-
-    if fold is not None:
-        output_path = out_dir.joinpath(f"model_fold{fold+1}.joblib")
+    if fold not in (0, None):
+        output_path = out_dir.joinpath(f"model_fold{fold}.joblib")
     else:
         output_path = out_dir.joinpath("model.joblib")
+    print(output_path)
     with DescriptionLoader.context(
         "export_model",
         output_path=output_path,
@@ -628,7 +625,7 @@ def export_model(out_dir, algorithm, is_using_outer_cv, fold=None):
 
 ### TODO: Check whether averaging is best vs any other metric
 @DescriptionLoader.function_description("utils/training/compete")
-def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, column_names, is_using_outer_cv, calculate_accuracy_scores):
+def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, column_names, calculate_accuracy_scores):
     """
     Compete algorithms against each other during the training stage and record results.
 
@@ -655,18 +652,9 @@ def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, colu
             name=algorithm_name,
         ):
             trained_algorithms[algorithm_name] = []
-            if is_using_outer_cv:
-                algorithm_log_table = []
-                for x_train_fold, y_train_fold, x_valid_fold, y_valid_fold in zip(x_train, y_train, x_valid, y_valid):
-                    algorithm_log, trained_algorithm = _fit_algorithm(algorithm, algorithm_name, x_train_fold, y_train_fold, x_valid_fold, y_valid_fold, column_names, calculate_accuracy_scores)
-                    algorithm_log_table.append(algorithm_log)
-                    trained_algorithms[algorithm_name].append(trained_algorithm)
-                algorithm_log_table = [algorithm_log_table[0][0]] + [sum(values) / len(values) for values in zip(*(lst[1:] for lst in algorithm_log_table))]
-                log_table.append(algorithm_log_table)
-            else:
-                algorithm_log, trained_algorithm = _fit_algorithm(algorithm, algorithm_name, x_train, y_train, x_valid, y_valid, column_names, calculate_accuracy_scores)
-                log_table.append(algorithm_log)
-                trained_algorithms[algorithm_name] = trained_algorithm
+            algorithm_log, trained_algorithm = _fit_algorithm(algorithm, algorithm_name, x_train, y_train, x_valid, y_valid, column_names, calculate_accuracy_scores)
+            log_table.append(algorithm_log)
+            trained_algorithms[algorithm_name] = trained_algorithm
 
     log_table = pd.DataFrame(data=log_table, columns=column_names)
     output_path = out_dir.joinpath('withheld_performance_metrics.tsv')
@@ -746,7 +734,7 @@ def get_tuning_hyperparams(module, random_state):
             "criterion": Categorical(["gini", "entropy", "log_loss"]),
             "max_depth": Integer(1, 10),
             "min_weight_fraction_leaf": Real(0, 0.5),
-            "max_features": Categorical(["sqrt", "log2"]),
+            "max_features": Real(0.1, 1),
             "warm_start": Categorical([True, False]),
             "random_state": Categorical([random_state]),
         },
@@ -755,7 +743,7 @@ def get_tuning_hyperparams(module, random_state):
             "criterion": Categorical(["squared_error", "absolute_error", "friedman_mse", "poisson"]),
             "max_depth": Integer(1, 10),
             "min_weight_fraction_leaf": Real(0, 0.5),
-            "max_features": Categorical(["sqrt", "log2"]),
+            "max_features": Real(0.1, 1),
             "warm_start": Categorical([True, False]),
             "random_state": Categorical([random_state]),
         },
@@ -802,6 +790,7 @@ def get_tuning_hyperparams(module, random_state):
             "alpha": Real(1e-3, 1e0, prior="log-uniform"),
             "l1_ratio": Real(0, 1),
             "selection": Categorical(["cyclic", "random"]),
+            "max_iter": Categorical([5000]),
         },
         "KNeighborsClassifier" : {
             "leaf_size": Integer(1e0, 1e2, prior="log-uniform"),
@@ -817,27 +806,32 @@ def get_tuning_hyperparams(module, random_state):
             "algorithm": Categorical(["ball_tree", "kd_tree", "brute"]),
             "p": Integer(1, 2),
         },
-        "LinearDiscriminantAnalysis" : {
-            "solver": Categorical(["svd", "lsqr", "eigen"]),
-            "tol": Real(1e-6, 1e-2, prior="log-uniform"),
-        },
-        ### TODO: Include tuples for hidden layer sizes if possible
+        "LinearDiscriminantAnalysis" : [
+            {
+                "solver": Categorical(["svd"]),
+                "tol": Real(1e-6, 1e-2, prior="log-uniform"),
+            },
+            {
+                "solver": Categorical(["lsqr", "eigen"]),
+                "shrinkage": Real(1e-4, 1.0, prior="log-uniform"),
+                "tol": Real(1e-6, 1e-2, prior="log-uniform"),
+            }
+        ],
         "MLPClassifier" : {
             "hidden_layer_sizes": Categorical([50, 100, 200]),
-            "activation": Categorical(["identity", "logistic", "tanh", "relu"]),
-            "solver": Categorical(["lbfgs", "sgd", "adam"]),
+            "activation": Categorical(["logistic", "tanh", "relu"]),
+            "solver": Categorical(["sgd", "adam"]),
             "alpha": Real(1e-5, 1e0, prior="log-uniform"),
             "learning_rate": Categorical(['constant', 'invscaling', 'adaptive']),
-            "max_iter": Categorical([1000]),
+            "max_iter": Categorical([5000]),
         },
         "MLPRegressor" : {
-            "loss": Categorical(["squared_error", "poisson"]),
             "hidden_layer_sizes": Categorical([50, 100, 200]),
-            "activation": Categorical(["identity", "logistic", "tanh", "relu"]),
-            "solver": Categorical(["lbfgs", "sgd", "adam"]),
+            "activation": Categorical(["logistic", "tanh", "relu"]),
+            "solver": Categorical(["sgd", "adam"]),
             "alpha": Real(1e-5, 1e0, prior="log-uniform"), 
             "learning_rate": Categorical(['constant', 'invscaling', 'adaptive']),
-            "max_iter": Categorical([1000]),
+            "max_iter": Categorical([5000]),
         },
         "QuadraticDiscriminantAnalysis" : {
             "tol": Real(1e-6, 1e-2, prior="log-uniform"),
