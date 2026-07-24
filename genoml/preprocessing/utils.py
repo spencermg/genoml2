@@ -123,6 +123,7 @@ def impute_df(df, impute_type, feature_type="genotype"):
     return df
 
 
+### TODO: Save mean and STDEV so the same values are applied to harmonized data
 def normalize_cols(df):
     # Remove the ID column
     cols = list(df.columns)

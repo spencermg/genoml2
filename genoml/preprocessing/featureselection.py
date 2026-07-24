@@ -59,20 +59,33 @@ class FeatureSelection:
     def pearson_correlation(self):
         df_features = self.df.copy().drop(columns=["ID", "PHENO"])
         numeric_features = df_features.select_dtypes(include=[np.number])
-        corr_matrix = numeric_features.corr().abs()
-        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-        correlation_filtered_features = [
-            column for column in numeric_features.columns 
-            if upper[column].dropna().max() < self._pearson_threshold
-        ]
-        self.df = self.df[["ID", "PHENO"] + correlation_filtered_features]
 
-        # df_features = self.df.copy().drop(columns=["ID", "PHENO"])
-        # corr_matrix = df_features.select_dtypes(include=[np.number]).corr().abs()
-        # upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-        # correlation_filtered_features = [column for column in df_features.columns if all(upper[column] < self._pearson_threshold)]
-        # self.df = self.df[["ID", "PHENO"] + correlation_filtered_features]
+        arr = numeric_features.values.T.astype(np.float32)
+        n = arr.shape[1]
+        cols = numeric_features.columns.tolist()
+        kept_idx = [0]
+        kept_arr = arr[[0]]
+
+        for i in range(1, len(cols)):
+            if np.abs((kept_arr @ arr[i]) / n).max() < self._pearson_threshold:
+                kept_idx.append(i)
+                kept_arr = np.vstack([kept_arr, arr[i]])
+
+        correlation_filtered_features = [cols[i] for i in kept_idx]
+        self.df = self.df[["ID", "PHENO"] + correlation_filtered_features]
         print(f"{len(correlation_filtered_features)} features remaining after Pearson's correlation filtering with a threshold of {self._pearson_threshold}")
+
+    # def pearson_correlation(self):
+    #     df_features = self.df.copy().drop(columns=["ID", "PHENO"])
+    #     numeric_features = df_features.select_dtypes(include=[np.number])
+    #     corr_matrix = numeric_features.corr().abs()
+    #     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+    #     correlation_filtered_features = [
+    #         column for column in numeric_features.columns 
+    #         if upper[column].dropna().max() < self._pearson_threshold
+    #     ]
+    #     self.df = self.df[["ID", "PHENO"] + correlation_filtered_features]
+    #     print(f"{len(correlation_filtered_features)} features remaining after Pearson's correlation filtering with a threshold of {self._pearson_threshold}")
 
     def ols_association(self):
         regression_results = []

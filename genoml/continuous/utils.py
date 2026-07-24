@@ -20,7 +20,9 @@ import seaborn as sns
 import statsmodels.formula.api as sm
 from itertools import repeat
 from genoml import utils
+from scipy.stats import pearsonr
 from sklearn import metrics
+from sklearn.metrics import mean_squared_error
 
 
 def export_prediction_data(out_dir, ids, step, algorithm, y, x, is_using_outer_cv, y_withheld=None, x_withheld=None, ids_withheld=None):
@@ -172,9 +174,11 @@ def _plot_results(regression_summary_path, regression_plot_path, df, is_using_ou
             label="Predicted = Reported",
         )
 
+        pearson_r, _ = pearsonr(df["REPORTED"].values, df["PREDICTED"].values)
+        rmse = np.sqrt(mean_squared_error(df["REPORTED"], df["PREDICTED"]))
         plt.text(
             0.95, 0.05,
-            f"$R^2 = {reg_model.rsquared:.3f}$",
+            f"$r = {pearson_r:.3f}$\n$RMSE = {rmse:.2f}$",
             ha="right",
             va="bottom",
             transform=plt.gca().transAxes,
@@ -189,22 +193,47 @@ def _plot_results(regression_summary_path, regression_plot_path, df, is_using_ou
 
 def additional_sumstats(algorithm_name, y_test, x_test, algorithm, prefix, is_using_outer_cv):
     if is_using_outer_cv:
+        y_true = []
+        y_pred = []
         for fold, y_test_fold in enumerate(y_test):
             y_pred_fold = algorithm[fold].predict(x_test[fold])
-            _additional_sumstats(algorithm_name, y_test_fold, y_pred_fold, prefix, fold=fold)
+            y_true.append(y_test_fold)
+            y_pred.append(y_pred_fold)
+        y_true = np.concatenate([np.array(y) for y in y_true])
+        y_pred = np.concatenate([np.array(y) for y in y_pred])
     else:
+        y_true = y_test.copy()
         y_pred = algorithm.predict(x_test)
-        _additional_sumstats(algorithm_name, y_test, y_pred, prefix)
+    _additional_sumstats(algorithm_name, y_true, y_pred, prefix)
 
 
-def _additional_sumstats(algorithm_name, y_test, y_pred, prefix, fold=None):
-    suffix = f"_fold{fold+1}" if fold is not None else ""
+# def additional_sumstats(algorithm_name, y_test, x_test, algorithm, prefix, is_using_outer_cv):
+#     if is_using_outer_cv:
+#         for fold, y_test_fold in enumerate(y_test):
+#             y_pred_fold = algorithm[fold].predict(x_test[fold])
+#             _additional_sumstats(algorithm_name, y_test_fold, y_pred_fold, prefix, fold=fold)
+#     else:
+#         y_pred = algorithm.predict(x_test)
+#         _additional_sumstats(algorithm_name, y_test, y_pred, prefix)
+
+
+def _additional_sumstats(algorithm_name, y_test, y_pred, prefix):
     log_table = pd.DataFrame(
         data=[[algorithm_name] + list(_calculate_accuracy_scores(y_test, y_pred))], 
-        columns=["Algorithm", "Explained Variance", "Mean Squared Error", "Median Absolute Error", "R-Squared_Error"],
+        columns=["Algorithm", "Explained Variance", "Root Mean Squared Error", "Median Absolute Error", "Pearson's R"],
     )
-    log_outfile = prefix.joinpath(f"performance_metrics{suffix}.tsv")
+    log_outfile = prefix.joinpath(f"performance_metrics.tsv")
     log_table.to_csv(log_outfile, index=False, sep="\t")
+
+
+# def _additional_sumstats(algorithm_name, y_test, y_pred, prefix, fold=None):
+#     suffix = f"_fold{fold+1}" if fold is not None else ""
+#     log_table = pd.DataFrame(
+#         data=[[algorithm_name] + list(_calculate_accuracy_scores(y_test, y_pred))], 
+#         columns=["Algorithm", "Explained Variance", "Root Mean Squared Error", "Median Absolute Error", "Pearson's R"],
+#     )
+#     log_outfile = prefix.joinpath(f"performance_metrics{suffix}.tsv")
+#     log_table.to_csv(log_outfile, index=False, sep="\t")
 
 
 def calculate_accuracy_scores(x, y, algorithm):
@@ -234,17 +263,17 @@ def _calculate_accuracy_scores(y, y_pred):
 
     :return: evs *(float)*: \n
         Explained Variance Score.
-    :return: mse *(float)*: \n
-        Mean Squared Error.
+    :return: rmse *(float)*: \n
+        Root Mean Squared Error.
     :return: mae *(float)*: \n
         Median Absolute Error.
-    :return: r2s *(float)*: \n
-        R^2 Score.
+    :return: pearson_r *(float)*: \n
+        Pearson's R.
     """
 
     evs = metrics.explained_variance_score(y, y_pred)
-    mse = metrics.mean_squared_error(y, y_pred)
+    rmse = np.sqrt(metrics.mean_squared_error(y, y_pred))
     mae = metrics.median_absolute_error(y, y_pred)
-    r2s = metrics.r2_score(y, y_pred)
+    pearson_r, _ = pearsonr(y, y_pred)
 
-    return evs, mse, mae, r2s
+    return evs, rmse, mae, pearson_r

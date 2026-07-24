@@ -16,6 +16,7 @@
 import genoml.continuous.utils as continuous_utils
 import joblib
 import pandas as pd
+import re
 import sys
 from genoml import utils
 from pathlib import Path
@@ -45,7 +46,11 @@ class Test:
             self._ids_test = []
             self._x_test = []
             self._algorithm = []
-            test_datasets = [f for f in Path(prefix).joinpath("Munge").iterdir() if f.is_file() and f.name.startswith("test_dataset")]
+            test_datasets = sorted(
+                [f for f in Path(prefix).joinpath("Munge").iterdir() 
+                if f.is_file() and f.name.startswith("test_dataset_fold")],
+                key=lambda f: int(re.search(r'fold(\d+)', f.name).group(1))
+            )
             for fold, test_dataset in enumerate(test_datasets):
                 df_test = utils.read_munged_data(test_dataset)
                 self._y_test.append(df_test.PHENO)

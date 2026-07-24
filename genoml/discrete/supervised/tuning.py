@@ -15,6 +15,7 @@
 
 import genoml.discrete.utils as discrete_utils
 import joblib
+import re
 import sys
 from genoml import utils
 from pathlib import Path
@@ -54,7 +55,11 @@ class Tune:
             self._ids_tune = [self._ids_tune]
             self._x_tune = [self._x_tune]
             self._algorithm = [self._algorithm]
-            train_datasets = [f for f in Path(prefix).joinpath("Munge").iterdir() if f.is_file() and f.name.startswith("train_dataset_fold")]
+            train_datasets = sorted(
+                [f for f in Path(prefix).joinpath("Munge").iterdir() 
+                if f.is_file() and f.name.startswith("train_dataset_fold")],
+                key=lambda f: int(re.search(r'fold(\d+)', f.name).group(1))
+            )
             for fold, train_dataset in enumerate(train_datasets):
                 df_tune = utils.read_munged_data(train_dataset)
                 self._y_tune.append(df_tune.PHENO)

@@ -284,7 +284,7 @@ def add_default_flag(parser, flag_name):
             choices = ["AUC", "Balanced_Accuracy", "Specificity", "Sensitivity"]
             default = "AUC"
         elif "continuous" in parser.prog:
-            choices = ["Explained_Variance", "Mean_Squared_Error", "Median_Absolute_Error", "R-Squared_Error"]
+            choices = ["Explained_Variance", "Root_Mean_Squared_Error", "Median_Absolute_Error", "Pearson_R"]
             default = "Explained_Variance"
         parser.add_argument(
             '--metric_max', 

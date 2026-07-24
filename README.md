@@ -406,7 +406,7 @@ genoml discrete supervised train \
 ```
 > *Note:* You must use the same `--prefix` that was used for training. This is how GenoML will know where to look for the `train_dataset.h5` file with your munged data!
 
-If you would like to determine the best competing algorithm by something other than the AUC, you can do so by changing the `--metric_max` flag (Options include `AUC`, `Balanced_Accuracy`, `Sensitivity`, and `Specificity` for `discrete`, `AUC` for `multiclass`, or `Explained_Variance`, `Mean_Squared_Error`, `Median_Absolute_Error`, and `R-Squared_Error` for `continuous` datasets):
+If you would like to determine the best competing algorithm by something other than the AUC, you can do so by changing the `--metric_max` flag (Options include `AUC`, `Balanced_Accuracy`, `Sensitivity`, and `Specificity` for `discrete`, `AUC` for `multiclass`, or `Explained_Variance`, `Root_Mean_Squared_Error`, `Median_Absolute_Error`, and `Pearson_R` for `continuous` datasets):
 ```shell
 # Running GenoML supervised training after munging on discrete data and specifying Sensitivity as the metric to optimize
 
@@ -461,7 +461,7 @@ genoml discrete supervised tune \
 --n_cv 3
 ```
 
-If you are interested in tuning on another metric other than AUC *(default is AUC)*, you can modify `--metric_tune` (Options include `AUC` and `Balanced_Accuracy` for `discrete` datasets, `AUC` for `multiclass` datasets, or `Explained_Variance`, `Mean_Squared_Error`, `Median_Absolute_Error`, and `R-Squared_Error` for `continuous` datasets) by doing the following: 
+If you are interested in tuning on another metric other than AUC *(default is AUC)*, you can modify `--metric_tune` (Options include `AUC` and `Balanced_Accuracy` for `discrete` datasets, `AUC` for `multiclass` datasets, or `Explained_Variance`, `Rot_Mean_Squared_Error`, `Median_Absolute_Error`, and `Pearson_R` for `continuous` datasets) by doing the following: 
 ```shell
 # Running GenoML supervised tuning after munging and training on discrete data, modifying the metric to tune by
 

@@ -16,6 +16,7 @@
 import copy
 import joblib
 import json
+import numpy as np
 import os
 import pandas as pd
 import sys
@@ -327,6 +328,7 @@ def _tune_model(estimator, x, y, param_distributions, scoring, n_iter, cv, rando
         n_jobs = -1,
         random_state = random_state,
         verbose = 0,
+        error_score = np.nan
     )
 
     with Timer() as timer:
@@ -817,22 +819,24 @@ def get_tuning_hyperparams(module, random_state):
                 "tol": Real(1e-6, 1e-2, prior="log-uniform"),
             }
         ],
-        "MLPClassifier" : {
-            "hidden_layer_sizes": Categorical([50, 100, 200]),
-            "activation": Categorical(["logistic", "tanh", "relu"]),
-            "solver": Categorical(["sgd", "adam"]),
-            "alpha": Real(1e-5, 1e0, prior="log-uniform"),
-            "learning_rate": Categorical(['constant', 'invscaling', 'adaptive']),
-            "max_iter": Categorical([5000]),
-        },
-        "MLPRegressor" : {
-            "hidden_layer_sizes": Categorical([50, 100, 200]),
-            "activation": Categorical(["logistic", "tanh", "relu"]),
-            "solver": Categorical(["sgd", "adam"]),
-            "alpha": Real(1e-5, 1e0, prior="log-uniform"), 
-            "learning_rate": Categorical(['constant', 'invscaling', 'adaptive']),
-            "max_iter": Categorical([5000]),
-        },
+        # "MLPClassifier" : {
+        #     "hidden_layer_sizes": Categorical([50, 100, 200]),
+        #     "activation": Categorical(["logistic", "tanh", "relu"]),
+        #     "solver": Categorical(["sgd", "adam"]),
+        #     "alpha": Real(1e-5, 1e0, prior="log-uniform"),
+        #     "learning_rate": Categorical(['constant', 'invscaling', 'adaptive']),
+        #     "learning_rate_init": Real(1e-4, 1e-2, prior="log-uniform"),
+        #     "max_iter": Categorical([500]),
+        # },
+        # "MLPRegressor" : {
+        #     "hidden_layer_sizes": Categorical([50, 100, 200]),
+        #     "activation": Categorical(["logistic", "tanh", "relu"]),
+        #     "solver": Categorical(["sgd", "adam"]),
+        #     "alpha": Real(1e-5, 1e0, prior="log-uniform"), 
+        #     "learning_rate": Categorical(['constant', 'invscaling', 'adaptive']),
+        #     "learning_rate_init": Real(1e-4, 1e-2, prior="log-uniform"),
+        #     "max_iter": Categorical([500]),
+        # },
         "QuadraticDiscriminantAnalysis" : {
             "tol": Real(1e-6, 1e-2, prior="log-uniform"),
         },
