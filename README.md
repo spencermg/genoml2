@@ -358,7 +358,7 @@ If you would like to harmonize just with genotypes (in PLINK binary format), the
 ```shell
 # Running GenoML harmonization on discrete data using PLINK genotype binary files and a phenotype file 
 
-genoml discrete supervised munge \
+genoml discrete supervised harmonize \
 --prefix outputs \
 --geno examples/discrete/validation \
 --pheno examples/discrete/validation_pheno.csv
@@ -369,7 +369,7 @@ If the training data were adjusted by confounders, you must include a file with 
 ```shell
 # Running GenoML harmonization on discrete data using PLINK genotype binary files and a phenotype file 
 
-genoml discrete supervised munge \
+genoml discrete supervised harmonize \
 --prefix outputs \
 --geno examples/discrete/validation \
 --pheno examples/discrete/validation_pheno.csv \
@@ -380,7 +380,7 @@ Machine learning models require that your datasets include all of the features t
 ```shell
 # Running GenoML harmonization on discrete data using PLINK genotype binary files and a phenotype file, while imputing any missing columns (ie, if an addit file was used during training and is not present for the harmonization samples).
 
-genoml discrete supervised munge \
+genoml discrete supervised harmonize \
 --prefix outputs \
 --geno examples/discrete/validation \
 --pheno examples/discrete/validation_pheno.csv \

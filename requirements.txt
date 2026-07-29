@@ -6,3 +6,4 @@ scikit-optimize
 statsmodels
 umap-learn
 xgboost==2.0.3
+requests==2.34.2

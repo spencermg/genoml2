@@ -28,8 +28,8 @@ from sklearn import model_selection
 from skopt import BayesSearchCV
 from skopt.space import Real, Integer, Categorical
 
-os.environ["PYTHONWARNINGS"] = "ignore"
-sys.stderr = open(os.devnull, 'w')
+# os.environ["PYTHONWARNINGS"] = "ignore"
+# sys.stderr = open(os.devnull, 'w')
 
 __author__ = 'Sayed Hadi Hashemi'
 

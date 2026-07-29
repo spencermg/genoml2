@@ -38,8 +38,8 @@ from pathlib import Path
 ### Check file extensions (txt vs tsv)
 ### Get rid of convergencewarning messages in tuning step
 ### If someone tries testing without munging/harmonizing a test dataset, throw an exception instead of the user getting an error message
+### Re-normalize during harmonization
 
-### TODO: RE-NORMALIZE DURING HARMONIZATION
 ### TODO: Add checks for training happening before tuning and testing
 ### TODO: Check if additional_sumstats is the same across all modules
 ### TODO: Check all possible model classes to make sure they all work and all their hyperparam combinations are compatible with tuning

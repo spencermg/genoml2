@@ -73,18 +73,18 @@ def gwas_filter(prefix, gwas_paths, p_gwas):
 def read_pheno_file(pheno_path, data_type):
     df_pheno = pd.read_csv(pheno_path, engine="python", sep=None, encoding="utf-8-sig")
     try:
-        if not {'ID', 'PHENO'}.issubset(df_pheno.columns):
+        if not {"ID", "PHENO"}.issubset(df_pheno.columns):
             raise ValueError("Error: It doesn't look as though your phenotype file is properly formatted. Did you check"
                              " that the columns are 'ID' and 'PHENO' and that controls=0 and cases=1?")
     except ValueError as ve:
         print(ve)
         sys.exit()
-    df_pheno['ID'] = df_pheno['ID'].astype(str)
+    df_pheno["ID"] = df_pheno["ID"].astype(str)
     if data_type == "c":
-        df_pheno['PHENO'] = df_pheno['PHENO'].astype(float)
+        df_pheno["PHENO"] = df_pheno["PHENO"].astype(float)
     else:
-        df_pheno['PHENO'] = pd.Categorical(df_pheno['PHENO']).codes
-    return df_pheno
+        df_pheno["PHENO"] = pd.Categorical(df_pheno["PHENO"]).codes
+    return df_pheno[["ID", "PHENO"]]
 
 
 def create_geno_df(prefix):
@@ -123,11 +123,10 @@ def impute_df(df, impute_type, feature_type="genotype"):
     return df
 
 
-### TODO: Save mean and STDEV so the same values are applied to harmonized data
 def normalize_cols(df):
     # Remove the ID column
     cols = list(df.columns)
-    cols.remove('ID')
+    cols.remove("ID")
     df_numeric = df[cols]
 
     # Remove any columns with a standard deviation of zero
@@ -146,11 +145,21 @@ def normalize_cols(df):
             print(f"The column {removed_list[removed_column]} was removed")
         cols = addit_keep_list
 
+    normalize_means = dict()
+    normalize_stdevs = dict()
     for col in cols:
         if (df[col].min() == 0.0) and (df[col].max() == 1.0):
             print(f"{col} is likely a binary indicator or a proportion and will not be scaled, just + 1 all the values of this variable and rerun to flag this column to be scaled.")
+            normalize_means[col] = 0
+            normalize_stdevs[col] = 1
         else:
-            df[col] = (df[col] - df[col].mean()) / df[col].std(ddof=0)
+            normalize_mean = df[col].mean()
+            normalize_stdev = df[col].std(ddof=0)
+            df[col] = (df[col] - normalize_mean) / normalize_stdev
+            normalize_means[col] = normalize_mean
+            normalize_stdevs[col] = normalize_stdev
+    normalize_means = pd.Series(normalize_means)
+    normalize_stdevs = pd.Series(normalize_stdevs)
 
     print("")
     print("You have just Z-scaled your non-genotype features, putting everything on a numeric scale similar to genotypes.")
@@ -159,7 +168,7 @@ def normalize_cols(df):
     print(df.describe())
     print("#" * 70)
 
-    return df
+    return df, normalize_means, normalize_stdevs
 
 
 def filter_harmonize(prefix, merged, ref_cols_harmonize):
@@ -264,7 +273,7 @@ def _create_ids_to_keep(geno_path, pheno_path, plink_ver, prefix):
     return tmp_ids_path
 
 
-def merge_addit_data(df_merged, addit_path, impute_type):
+def merge_addit_data(df_merged, addit_path, impute_type, normalize_means=None, normalize_stdevs=None):
     """
     Merge additional/clinical data with phenotype data.
 
@@ -272,23 +281,34 @@ def merge_addit_data(df_merged, addit_path, impute_type):
         df_merged (pandas.DataFrame): Predicted phenotype probabilities.
         addit_path (str): Path to additional/clinical data.
         impute_type (str): Imputation method to use.
+        normalize_means (pandas.Series): Means for each of the harmonized addit features.
+        normalize_stdevs (pandas.Series): Standard deviations for each of the harmonized addit features.
 
     :return: df_merged *(pandas.DataFrame)*: \n
         Merged phenotype and additional/clinical data.
+    :return: means *(pandas.Series)*: \n
+        Mean values for each addit feature being normalized.
+    :return: stdevs *(pandas.Series)*: \n
+        Standard Deviation values for each addit feature being normalized.
     """
 
     # Process non-genotype data if provided by the user
     if addit_path is not None:
         print("Processing non-genotype data")
         df_addit = pd.read_csv(addit_path, engine="python", sep=None, encoding="utf-8-sig")
-        df_addit['ID'] = df_addit['ID'].astype(str)
+        df_addit["ID"] = df_addit["ID"].astype(str)
         df_addit = impute_df(df_addit, impute_type, feature_type="non-genotype")
-        df_addit = normalize_cols(df_addit)
-        df_merged = pd.merge(df_merged, df_addit, on='ID', how='inner')
+        if normalize_means is not None and normalize_stdevs is not None:
+            norm_cols = normalize_means.index.tolist()
+            df_addit = df_addit[["ID"] + norm_cols]
+            df_addit[norm_cols] = (df_addit[norm_cols] - normalize_means) / normalize_stdevs
+        else:
+            df_addit, normalize_means, normalize_stdevs = normalize_cols(df_addit)
+        df_merged = pd.merge(df_merged, df_addit, on="ID", how="inner")
     else:
         print("No additional features as predictors? No problem, we'll stick to genotypes.")
     
-    return df_merged
+    return df_merged, normalize_means, normalize_stdevs
 
 
 def merge_geno_data(df_merged, geno_path, pheno_path, impute_type, prefix, gwas_paths, p_gwas, skip_prune, plink_exec, r2):

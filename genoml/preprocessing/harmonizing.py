@@ -41,7 +41,9 @@ class Harmonize:
         self.vif_iter = params["vif_iter"]
         self.target_features = params["target_features"]
         self.cols = params["cols"]
-        self.avg_vals = params["avg_vals"]
+        self.impute_vals = params["impute_vals"]
+        self.mean_vals = params["mean_vals"]
+        self.std_vals = params["std_vals"]
         self.umap_reducer = joblib.load(self.prefix.joinpath("umap_clustering.joblib")) if self.prefix.joinpath("umap_clustering.joblib").exists() else None
 
         utils.DescriptionLoader.print(
@@ -81,7 +83,7 @@ class Harmonize:
     def create_merged_datasets(self):
         """ Merge phenotype, genotype, and additional data. """
         self.df_merged_harmonize = preprocessing_utils.read_pheno_file(self.pheno_path, self.data_type)
-        self.df_merged_harmonize = preprocessing_utils.merge_addit_data(self.df_merged_harmonize, self.addit_path, self.impute_type)
+        self.df_merged_harmonize, _, _ = preprocessing_utils.merge_addit_data(self.df_merged_harmonize, self.addit_path, self.impute_type, normalize_means=self.mean_vals, normalize_stdevs=self.std_vals)
         self.df_merged_harmonize = preprocessing_utils.merge_geno_harmonize_data(
             self.df_merged_harmonize, self.geno_path, self.pheno_path, self.impute_type, self.prefix, self.plink_exec)
 
@@ -118,8 +120,8 @@ class Harmonize:
         elif len(missing_cols) > 0 and self.force_impute:
             with open(self.prefix.joinpath("missing_cols.txt"), 'w') as file:
                 for col in missing_cols:
-                    self.df_merged_harmonize[col] = self.avg_vals[col]
-                    file.write(f'{col}\t{self.avg_vals[col]}\n')
+                    self.df_merged_harmonize[col] = self.impute_vals[col]
+                    file.write(f'{col}\t{self.impute_vals[col]}\n')
             self.df_merged_harmonize = self.df_merged_harmonize[self.cols]
 
             print_str = f"{len(missing_cols)} of the {len(self.cols)} features that were used to fit the model which are not present in the dataset you're harmonizing! \n"

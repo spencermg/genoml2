@@ -93,20 +93,24 @@ class Munge:
         self.df_merged = None
         self.df_merged_test = None
         self.df_merged_cv_dict = None
+        self._addit_col_names = None
+        self._addit_means = None
+        self._addit_stdevs = None
         self.features_list = None
 
 
     def create_merged_datasets(self, n_outer_cv=None):
         """ Merge phenotype, genotype, and additional data. """
         self.df_merged = preprocessing_utils.read_pheno_file(self.pheno_path, self.data_type)
-        self.df_merged = preprocessing_utils.merge_addit_data(self.df_merged, self.addit_path, self.impute_type)
+        self.df_merged, self._addit_means, self._addit_stdevs = preprocessing_utils.merge_addit_data(self.df_merged, self.addit_path, self.impute_type)
+        self._addit_col_names = self.df_merged.drop(columns=["ID", "PHENO"]).columns.values
         self.df_merged = preprocessing_utils.merge_geno_data(
             self.df_merged, self.geno_path, self.pheno_path, self.impute_type, self.prefix, self.gwas_paths, self.p_gwas, self.skip_prune, self.plink_exec, self.r2,
         )
 
         if self.is_munging_test_data:
             self.df_merged_test = preprocessing_utils.read_pheno_file(self.pheno_test_path, self.data_type)
-            self.df_merged_test = preprocessing_utils.merge_addit_data(self.df_merged_test, self.addit_test_path, self.impute_type)
+            self.df_merged_test, _, _ = preprocessing_utils.merge_addit_data(self.df_merged_test, self.addit_test_path, self.impute_type)
             self.df_merged_test = preprocessing_utils.merge_geno_data(
                 self.df_merged_test, self.geno_test_path, self.pheno_test_path, self.impute_type, self.prefix, self.gwas_paths, self.p_gwas, self.skip_prune, self.plink_exec, self.r2,
             )
@@ -205,10 +209,10 @@ class Munge:
 
         # Also save parameters for harmonization
         cols = self.df_merged.columns
-        if self.impute_type == "mean":
-            avg_vals = self.df_merged.select_dtypes(include=[np.number]).mean()
-        else:
-            avg_vals = self.df_merged.select_dtypes(include=[np.number]).median()
+        numeric_cols = self.df_merged.select_dtypes(include=[np.number]).columns.values
+        impute_vals = self.df_merged[numeric_cols].mean()
+        if self.impute_type != "mean":
+            impute_vals = self.df_merged[numeric_cols].median()
         params_for_harmonize = {
             "adjust_normalize" : self.adjust_normalize,
             "impute_type" : self.impute_type,
@@ -216,7 +220,9 @@ class Munge:
             "vif_iter" : self.vif_iter,
             "target_features" : self.features_list, 
             "cols" : cols,
-            "avg_vals" : avg_vals,
+            "impute_vals" : impute_vals,
+            "mean_vals" : self._addit_means,
+            "std_vals" : self._addit_stdevs,
         }
         params_path = f"params{f'_fold{fold}' if fold is not None else ''}.pkl"
         with open(self.prefix.joinpath(params_path), "wb") as file:
