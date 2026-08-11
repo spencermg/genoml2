@@ -54,7 +54,7 @@ def gwas_filter(prefix, gwas_paths, p_gwas):
         snps_to_keep = []
         outfile = prefix.joinpath("p_threshold_variants.tab")
         for gwas_path in gwas_paths:
-            gwas_df = pd.read_csv(gwas_path, sep=None)
+            gwas_df = pd.read_csv(gwas_path, sep=None, engine="python")
             if "SNP" in gwas_df.columns.values[0]:
                 gwas_df.rename({gwas_df.columns.values[0]:"SNP"}, axis=1, inplace=True)
             if "p" in gwas_df.columns.values[0]:
@@ -89,7 +89,7 @@ def read_pheno_file(pheno_path, data_type):
 
 def create_geno_df(prefix):
     df_geno = pd.read_csv(str(prefix.joinpath('temp_genos.raw')), sep=r"\s+", engine="c")
-    cols = df_geno.columns.values
+    cols = list(df_geno.columns.values)
     cols.sort()
     df_geno.drop(["FID","PAT","MAT","SEX","PHENOTYPE"], axis=1, inplace=True)
     var_ids = df_geno.columns.values[1:]

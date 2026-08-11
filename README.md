@@ -451,14 +451,14 @@ genoml discrete supervised tune \
 ```
 > *Note:* You must use the same `--prefix` that was used for training. This is how GenoML will know where to look for the `train_dataset.h5` file with your munged data!
 
-If you are interested in changing the number of iterations the tuning process goes through by modifying `--max_tune` *(default is 50)*, or the number of cross-validations by modifying `--n_cv` *(default is 5)*, this is what the command would look like: 
+If you are interested in changing the number of iterations the tuning process goes through by modifying `--max_tune` *(default is 50)*, or the number of cross-validations by modifying `--n_inner_cv` *(default is 5)*, this is what the command would look like: 
 ```shell
 # Running GenoML supervised tuning after munging and training on discrete data, modifying the number of iterations and cross-validations 
 
 genoml discrete supervised tune \
 --prefix outputs \
 --max_tune 10 \
---n_cv 3
+--n_inner_cv 3
 ```
 
 If you are interested in tuning on another metric other than AUC *(default is AUC)*, you can modify `--metric_tune` (Options include `AUC` and `Balanced_Accuracy` for `discrete` datasets, `AUC` for `multiclass` datasets, or `Explained_Variance`, `Rot_Mean_Squared_Error`, `Median_Absolute_Error`, and `Pearson_R` for `continuous` datasets) by doing the following: 
@@ -540,11 +540,11 @@ genoml discrete supervised train \
     # outputs/model.joblib
     # outputs/algorithm.txt
     # outputs/Train/precision_recall.png
-    # outputs/Train/predictions.txt
+    # outputs/Train/predictions.tsv
     # outputs/Train/probabilities.png
     # outputs/Train/roc.png
-    # outputs/Train/train_predictions.txt
-    # outputs/Train/withheld_performance_metrics.txt
+    # outputs/Train/train_predictions.tsv
+    # outputs/Train/withheld_performance_metrics.tsv
 # Files updated: 
     # outputs/log.txt
 
@@ -552,15 +552,15 @@ genoml discrete supervised train \
 genoml discrete supervised tune \
 --prefix outputs \
 --max_tune 10 \
---n_cv 3 \
+--n_inner_cv 3 \
 --metric_tune Balanced_Accuracy
 # Files made: 
-    # outputs/Tune/cv_summary.txt
+    # outputs/Tune/cv_summary.tsv
     # outputs/Tune/precision_recall.png
-    # outputs/Tune/predictions.txt
+    # outputs/Tune/predictions.tsv
     # outputs/Tune/probabilities.png
     # outputs/Tune/roc.png
-    # outputs/Tune/tuning_summary.txt
+    # outputs/Tune/tuning_summary.tsv
 # Files updated: 
     # outputs/model.joblib
     # outputs/log.txt
@@ -569,9 +569,9 @@ genoml discrete supervised tune \
 genoml discrete supervised test \
 --prefix outputs
 # Files made: 
-    # outputs/Test/performance_metrics.txt
+    # outputs/Test/performance_metrics.tsv
     # outputs/Test/precision_recall.png
-    # outputs/Test/predictions.txt
+    # outputs/Test/predictions.tsv
     # outputs/Test/probabilities.png
     # outputs/Test/roc.png
 # Files updated: 
@@ -584,7 +584,7 @@ genoml discrete supervised test \
 
 Planned experimental features include, but are not limited to:
 - Support for unsupervised learning models
-- Multiclass and multilabel prediction
+- Multilabel prediction
 - GWAS QC and Pipeline
 - Network analyses
 - Multi-omic munging

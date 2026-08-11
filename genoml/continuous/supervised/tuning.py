@@ -71,7 +71,7 @@ class Tune():
 
         if metric_tune == "Explained_Variance":
             self._scoring_metric = metrics.make_scorer(metrics.explained_variance_score)
-        elif metric_tune == "Mean_Squared_Error":
+        elif metric_tune == "Root_Mean_Squared_Error":
             self._scoring_metric = metrics.make_scorer(metrics.mean_squared_error)
         elif metric_tune == "Median_Absolute_Error":
             self._scoring_metric = metrics.make_scorer(metrics.median_absolute_error)

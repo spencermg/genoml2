@@ -207,16 +207,6 @@ def additional_sumstats(algorithm_name, y_test, x_test, algorithm, prefix, is_us
     _additional_sumstats(algorithm_name, y_true, y_pred, prefix)
 
 
-# def additional_sumstats(algorithm_name, y_test, x_test, algorithm, prefix, is_using_outer_cv):
-#     if is_using_outer_cv:
-#         for fold, y_test_fold in enumerate(y_test):
-#             y_pred_fold = algorithm[fold].predict(x_test[fold])
-#             _additional_sumstats(algorithm_name, y_test_fold, y_pred_fold, prefix, fold=fold)
-#     else:
-#         y_pred = algorithm.predict(x_test)
-#         _additional_sumstats(algorithm_name, y_test, y_pred, prefix)
-
-
 def _additional_sumstats(algorithm_name, y_test, y_pred, prefix):
     log_table = pd.DataFrame(
         data=[[algorithm_name] + list(_calculate_accuracy_scores(y_test, y_pred))], 
@@ -224,16 +214,6 @@ def _additional_sumstats(algorithm_name, y_test, y_pred, prefix):
     )
     log_outfile = prefix.joinpath(f"performance_metrics.tsv")
     log_table.to_csv(log_outfile, index=False, sep="\t")
-
-
-# def _additional_sumstats(algorithm_name, y_test, y_pred, prefix, fold=None):
-#     suffix = f"_fold{fold+1}" if fold is not None else ""
-#     log_table = pd.DataFrame(
-#         data=[[algorithm_name] + list(_calculate_accuracy_scores(y_test, y_pred))], 
-#         columns=["Algorithm", "Explained Variance", "Root Mean Squared Error", "Median Absolute Error", "Pearson's R"],
-#     )
-#     log_outfile = prefix.joinpath(f"performance_metrics{suffix}.tsv")
-#     log_table.to_csv(log_outfile, index=False, sep="\t")
 
 
 def calculate_accuracy_scores(x, y, algorithm):

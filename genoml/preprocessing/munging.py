@@ -175,6 +175,7 @@ class Munge:
                     self.confounders_test,
                     self.adjust_normalize,
                     self.umap_reduce,
+                    self._random_state,
                 )
                 _ = test_adjuster.umap_reducer("test", reducer=umap_reducer)
                 self.df_merged_test, _ = test_adjuster.adjust_confounders(adjustment_models=adjustment_models, fold=fold)
