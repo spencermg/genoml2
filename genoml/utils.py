@@ -577,7 +577,6 @@ def _compare_tuning_performance(out_dir, cv_tuned, cv_baseline, algo_tuned, algo
     yield y_predicted
 
 
-### TODO: Make sure arguments are updated everywhere
 def read_munged_data(file_path):
     """
     Read munged hdf5 file to pandas
@@ -625,7 +624,6 @@ def export_model(out_dir, algorithm, fold=None):
         joblib.dump(algorithm, output_path)
 
 
-### TODO: Check whether averaging is best vs any other metric
 @DescriptionLoader.function_description("utils/training/compete")
 def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, column_names, calculate_accuracy_scores):
     """

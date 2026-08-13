@@ -77,7 +77,6 @@ class Train:
         )
 
 
-    ### TODO: Do we need overfit criteria here as with discrete and multiclass?
     def select_best_algorithm(self):
         """ Determine the best-performing algorithm. """
         self._best_algorithm, best_algorithm_name = utils.select_best_algorithm(

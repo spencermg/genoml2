@@ -22,7 +22,7 @@ from sklearn import ensemble, feature_selection
 from statsmodels.stats import outliers_influence
 from tqdm import tqdm
 
-### TODO: Migrate print statements to use utils.DescriptionLoader.print
+
 class FeatureSelection:
     def __init__(self, prefix, df, data_type, n_est, vif_iter, vif_threshold, chunk_size, pearson_threshold, ols_threshold, random_state, fold=None):
         df.dropna(axis=1, inplace=True)
@@ -74,18 +74,6 @@ class FeatureSelection:
         correlation_filtered_features = [cols[i] for i in kept_idx]
         self.df = self.df[["ID", "PHENO"] + correlation_filtered_features]
         print(f"{len(correlation_filtered_features)} features remaining after Pearson's correlation filtering with a threshold of {self._pearson_threshold}")
-
-    # def pearson_correlation(self):
-    #     df_features = self.df.copy().drop(columns=["ID", "PHENO"])
-    #     numeric_features = df_features.select_dtypes(include=[np.number])
-    #     corr_matrix = numeric_features.corr().abs()
-    #     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-    #     correlation_filtered_features = [
-    #         column for column in numeric_features.columns 
-    #         if upper[column].dropna().max() < self._pearson_threshold
-    #     ]
-    #     self.df = self.df[["ID", "PHENO"] + correlation_filtered_features]
-    #     print(f"{len(correlation_filtered_features)} features remaining after Pearson's correlation filtering with a threshold of {self._pearson_threshold}")
 
     def ols_association(self):
         regression_results = []
@@ -158,7 +146,6 @@ class FeatureSelection:
             sep="\t",
         )
 
-        ### TODO: Should we define a threshold somewhere? Currently only keeping features with importance > mean
         # Filter to only include important features.
         x_reduced = self.x.iloc[:, model.get_support()]
         self.df = pd.concat([
@@ -167,7 +154,6 @@ class FeatureSelection:
             x_reduced.reset_index(drop=True),
         ], axis = 1, ignore_index=False)
 
-        ### TODO: This should be after VIF
         # Save features
         list_features_path = f"list_features{f'_fold{self.fold}' if self.fold is not None else ''}.txt"
         with open(self.prefix.joinpath(list_features_path), 'w') as f:
@@ -179,7 +165,6 @@ class FeatureSelection:
     def vif(self):
         self.df.columns = self.df.columns.str.strip()
 
-        ### TODO: Should we sample more than this? And/or sample within each iteration?
         print("Sampling 100 rows at random to reduce memory overhead...")
         df_cleaned = self.df.sample(n=100, random_state=self._random_state).copy().reset_index()
 
@@ -187,7 +172,6 @@ class FeatureSelection:
         df_cleaned.drop(columns=["index", "PHENO", "ID"], inplace=True)
         df_cleaned = df_cleaned.astype(float)
 
-        ### TODO: each iteration of VIF does the same thing... what is this supposed to do?
         for iteration in range(self.vif_iter):
             print(f"\n\nIteration {iteration + 1}\n\n")
             print("Shuffling columns...")

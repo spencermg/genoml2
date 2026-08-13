@@ -158,7 +158,6 @@ def precision_recall_plot(plot_path, fold_data, algorithm_name):
     )
 
 
-### TODO: Why is this organized different from the same function in the continuous module? (pd vs np, train vs withheld, including both sets of IDs, split into functions, etc)
 def export_prediction_data(out_dir, algorithm, y, x, ids, is_using_outer_cv, y_train=None, x_train=None, ids_train=None, is_testing=False):
     """
     Save probability histograms and tables with accuracy metrics.

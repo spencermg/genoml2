@@ -22,7 +22,6 @@ from genoml import utils
 from pathlib import Path
 
 
-### TODO: Add functionality to apply models without having ground truth data
 class Test:
     @utils.DescriptionLoader.function_description("info", cmd="Continuous Supervised Testing")
     def __init__(self, prefix):

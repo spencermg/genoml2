@@ -25,35 +25,6 @@ from datetime import datetime
 from genoml import utils, dependencies
 from pathlib import Path
 
-### Make sure this works for discrete and multiclass too
-### Add parameter for random state that is applied everywhere in GenoML
-### Add option for stratifying cross-validations
-### Decide between "run_prefix" and "prefix"
-### Create variable for outer_cv instead of always checking if something is a list
-### Add promoter filtering directly into GenoML
-### Add stratification by phenotype for train/test split
-### Look into which data are "withheld" during training and tuning
-### Add y=x trendline to regression plots
-### Clean up continuous utils where I generate regression plot 
-### Check file extensions (txt vs tsv)
-### Get rid of convergencewarning messages in tuning step
-### If someone tries testing without munging/harmonizing a test dataset, throw an exception instead of the user getting an error message
-### Re-normalize during harmonization
-
-### TODO: Add checks for training happening before tuning and testing
-### TODO: Check if additional_sumstats is the same across all modules
-### TODO: Check all possible model classes to make sure they all work and all their hyperparam combinations are compatible with tuning
-### TODO: Test discrete and multiclass on real datasets to make sure they actually work well
-### TODO: Look into combining some of the plots/tables across folds in discrete and multiclass
-### TODO: Update README
-### TODO: Update docstrings
-### TODO: Add stratification by phenotype in tuning CV
-
-
-
-### TODO: Add variables for loading intermediate results that were not generated within GenoML.
-### TODO: Add ability to load confounders in same file with addit.
-
 
 def handle_main():
     print(f"Running GenoML version 1.5.4")
@@ -150,7 +121,6 @@ def handle_continuous_supervised_munge():
 
 
 def handle_continuous_supervised_harmonize():
-    ### TODO: Allow users to harmonize from a different directory than where the training Munge data are -- define two different prefixes
     handle_endpoints("genoml continuous supervised harmonize",
                      ["prefix", "geno", "pheno", "addit", "confounders", "force_impute", "random_state"],
                      functools.partial(preprocessing.harmonize, data_type="c"), 3)

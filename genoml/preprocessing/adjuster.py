@@ -52,7 +52,6 @@ class Adjuster:
 
         self.targets.sort()
         
-        ### TODO: Should we give an error instead?
         confounders_in_targets = [col for col in self.df_confounders.columns if col in self.targets]
         if len(confounders_in_targets) > 0:
             self.df_confounders.drop(columns=confounders_in_targets, errors="ignore", inplace=True)

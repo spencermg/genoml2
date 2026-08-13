@@ -85,7 +85,6 @@ class Train:
         )
 
     
-    ### TODO: Update this to be specific to multiclass
     def select_best_algorithm(self):
         """ Determine the best-performing algorithm. """
         # Drop those that have a delta between sensitivity and specificity greater than 0.85, 

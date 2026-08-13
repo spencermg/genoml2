@@ -27,7 +27,6 @@ def train(prefix, metric_max, train_split, random_state):
     trainer.export_prediction_data()
 
 
-### TODO: Add variables for loading old results
 def tune(prefix, metric_tune, max_iter, cv_count, random_state):
     tuner = Tune(prefix, metric_tune, max_iter, cv_count, random_state)
     tuner.tune_model()

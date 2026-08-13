@@ -21,7 +21,6 @@ import sys
 from pathlib import Path
 
 
-### TODO: Add docstrings
 def define_geno_bash_cmds(prefix, skip_prune, plink_exec, geno_path, r2, gwas_paths, pheno_path):
     tmp_prefix = str(prefix.joinpath("temp_genos"))
     extract_vars_path = str(prefix.joinpath('p_threshold_variants.tab'))
@@ -29,7 +28,6 @@ def define_geno_bash_cmds(prefix, skip_prune, plink_exec, geno_path, r2, gwas_pa
     var_path = str(prefix.joinpath('variants.txt'))
 
     # Default to using p-files if provided by the user, otherwise use b-files
-    ### TODO: Add notice that using b-file inputs might cause weird results for any variants where Alt allele == Major allele
     if Path(geno_path + ".pvar").exists() and Path(geno_path + ".pgen").exists() and Path(geno_path + ".psam").exists():
         print(f"A list of variants and the allele being counted in the dosages (usually the minor allele) can "
               f"be found here: {var_alleles_path}")
@@ -42,7 +40,6 @@ def define_geno_bash_cmds(prefix, skip_prune, plink_exec, geno_path, r2, gwas_pa
         tmp_ids_path = _create_ids_to_keep(geno_path, pheno_path, 1, prefix)
         return _define_bfile_cmds(skip_prune, plink_exec, geno_path, r2, tmp_prefix, extract_vars_path, var_alleles_path, var_path, gwas_paths, tmp_ids_path)
     
-    ### TODO: Add compatibility for VCF input
     else:
         raise FileNotFoundError(f"No valid genotype files found. Options indlude:\n\t"
                                 f"{geno_path} + \".pvar\", \".pgen\", AND \".psam\", OR\n\t"

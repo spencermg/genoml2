@@ -230,7 +230,6 @@ class Munge:
             pickle.dump(params_for_harmonize, file)
 
         # Thank the user
-        ### TODO: Update file path(s) for outer CV
         if fold is None or fold == self.n_outer_cv:
             print(f"Your fully munged training data can be found here: {self.prefix.joinpath(train_h5_path)}")
             if self.pheno_test_path is not None:
