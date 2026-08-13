@@ -20,7 +20,6 @@ from genoml.continuous.supervised.testing import Test
 
 
 def train(prefix, metric_max):
-
     trainer = Train(prefix, metric_max)
     trainer.compete()
     trainer.select_best_algorithm()
