@@ -27,7 +27,7 @@ from pathlib import Path
 
 
 def handle_main():
-    print(f"Running GenoML version 1.5.4")
+    print(f"Running GenoML version 2.0.0")
     entry_points = [
         {"name": "continuous", "handler": handle_continuous,
         "description": "for processing continuous datatypes (ex: age at onset)"},
