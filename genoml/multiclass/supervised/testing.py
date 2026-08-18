@@ -31,15 +31,7 @@ class Test:
             prefix=prefix,
         )
 
-        if Path(prefix).joinpath("Munge").joinpath(f"test_dataset.h5").exists():
-            self._is_using_outer_cv = False
-            df_test = utils.read_munged_data(Path(prefix).joinpath("Munge").joinpath(f"test_dataset.h5"))
-            self._y_test = df_test.PHENO
-            self._ids_test = df_test.ID
-            self._x_test = df_test.drop(columns=["PHENO", "ID"])
-            self._algorithm = joblib.load(Path(prefix).joinpath("model.joblib"))
-            self._algorithm_name = utils.get_algorithm_name(self._algorithm)
-        elif Path(prefix).joinpath("Munge").joinpath(f"test_dataset_fold1.h5").exists():
+        if Path(prefix).joinpath("Munge").joinpath(f"test_dataset_fold1.h5").exists():
             self._is_using_outer_cv = True
             self._y_test = []
             self._ids_test = []
@@ -57,6 +49,14 @@ class Test:
                 self._x_test.append(df_test.drop(columns=["PHENO", "ID"]))
                 self._algorithm.append(joblib.load(Path(prefix).joinpath(f"model_fold{fold+1}.joblib")))
             self._algorithm_name = utils.get_algorithm_name(self._algorithm[0])
+        elif Path(prefix).joinpath("Munge").joinpath(f"test_dataset.h5").exists():
+            self._is_using_outer_cv = False
+            df_test = utils.read_munged_data(Path(prefix).joinpath("Munge").joinpath(f"test_dataset.h5"))
+            self._y_test = df_test.PHENO
+            self._ids_test = df_test.ID
+            self._x_test = df_test.drop(columns=["PHENO", "ID"])
+            self._algorithm = joblib.load(Path(prefix).joinpath("model.joblib"))
+            self._algorithm_name = utils.get_algorithm_name(self._algorithm)
         else:
             raise FileNotFoundError(
                 f"No munged data found at {prefix}/Munge. Please run the munge step first."

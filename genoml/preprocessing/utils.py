@@ -297,8 +297,9 @@ def merge_addit_data(df_merged, addit_path, impute_type, normalize_means=None, n
         df_addit = impute_df(df_addit, impute_type, feature_type="non-genotype")
         if normalize_means is not None and normalize_stdevs is not None:
             norm_cols = normalize_means.index.tolist()
+            norm_cols = [col for col in norm_cols if col in df_addit.columns.values]
             df_addit = df_addit[["ID"] + norm_cols]
-            df_addit[norm_cols] = (df_addit[norm_cols] - normalize_means) / normalize_stdevs
+            df_addit[norm_cols] = (df_addit[norm_cols] - normalize_means[norm_cols]) / normalize_stdevs[norm_cols]
         else:
             df_addit, normalize_means, normalize_stdevs = normalize_cols(df_addit)
         df_merged = pd.merge(df_merged, df_addit, on="ID", how="inner")
