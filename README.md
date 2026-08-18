@@ -21,6 +21,10 @@ If you are using GenoML for your own work, please cite the following papers:
 - Makarious, M. B., Leonard, H. L., Vitale, D., Iwaki, H., Sargent, L., Dadu, A., ... & Nalls, M. A. (2022). Multi-Modality Machine Learning Predicting Parkinson’s Disease. NPJ Parkinson's Disease.
 
 ### Installing + Downloading Example Data 
+- Within your conda environment, ensure necessary conda packages are installed first
+
+`conda install -c conda-forge numba llvmlite -y`
+
 - Install this repository directly from GitHub (from source; master branch)
 
 `git clone https://github.com/GenoML/genoml2.git`
