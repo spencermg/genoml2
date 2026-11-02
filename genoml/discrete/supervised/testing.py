@@ -24,7 +24,7 @@ from pathlib import Path
 
 class Test:
     @utils.DescriptionLoader.function_description("info", cmd="Discrete Supervised Testing")
-    def __init__(self, prefix):
+    def __init__(self, prefix, harmonized):
         utils.DescriptionLoader.print(
             "testing/info",
             python_version=sys.version,

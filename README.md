@@ -50,6 +50,7 @@ OR
 #### [2. Training with GenoML](#2)
 #### [3. Tuning with GenoML](#3)
 #### [4. Testing/Validating with GenoML](#4)
+#### [4b. Testing/Validating harmonized data with GenoML](#4b)
 #### [5. Full pipeline example](#5)
 #### [6. Experimental Features](#6)
 
@@ -106,7 +107,7 @@ Munging with GenoML will, at minimum, do the following:
 **Required** arguments for GenoML munging are `--prefix` and `--pheno` 
 - `data` : Are the data `continuous`, `discrete`, or `multiclass`?
 - `method`: Do you want to use `supervised` or `unsupervised` machine learning? *(`unsupervised` currently under development)*
-- `mode`:  would you like to `munge`, `harmonize`, `train`, `tune`, or `test` your model? Here, you will use `munge`.
+- `mode`: Would you like to `munge`, `harmonize`, `train`, `tune`, `test`, or `test_harmonize` your model? Here, you will use `munge`.
 - `--prefix` : Where would you like your outputs to be saved?
 - `--pheno` : Where is your phenotype file? This file only has 2 columns, ID in one, and PHENO in the other (0 for controls and 1 for cases when using the `discrete` module, 0, ..., *n-1* when using the `multiclass` module for *n* distinct phenotypes, or numeric values when using the `continuous` module).
 
@@ -347,7 +348,7 @@ GenoML allows you to munge your testing data separately from your training data 
 **Required** arguments for GenoML harmonizing are the following: 
 - `data`: Are the data `continuous`, `discrete`, or `multiclass`?
 - `method`: Do you want to use `supervised` or `unsupervised` machine learning? *(`unsupervised` currently under development)*
-- `mode`:  would you like to `munge`, `harmonize`, `train`, `tune`, or `test` your model? Here, you will use `harmonize`.
+- `mode`: Would you like to `munge`, `harmonize`, `train`, `tune`, `test`, or `test_harmonize` your model? Here, you will use `harmonize`.
 - `--prefix` : Where would you like your outputs to be saved?
 - `--pheno` : Where is your phenotype file? This file only has 2 columns: ID in one, and PHENO in the other (0 for controls and 1 for cases when using the `discrete` module, 0, ..., *n-1* when using the `multiclass` module for *n* distinct phenotypes, or numeric values when using the `continuous` module).
 
@@ -398,7 +399,7 @@ Training with GenoML competes a number of different algorithms and outputs the b
 **Required** arguments for GenoML training are the following: 
 - Are the data `continuous`, `discrete`, or `multiclass`?
 - `method`: Do you want to use `supervised` or `unsupervised` machine learning? *(unsupervised currently under development)*
-- `mode`:  would you like to `munge`, `harmonize`, `train`, `tune`, or `test` your model? Here, you will use `train`.
+- `mode`: Would you like to `munge`, `harmonize`, `train`, `tune`, `test`, or `test_harmonize` your model? Here, you will use `train`.
 - `--prefix` : Where would you like your outputs to be saved?
 
 The most basic command to train your model looks like the following: 
@@ -443,7 +444,7 @@ Tuning with GenoML applies fine-tuning with cross-validation using the trained m
 **Required** arguments for GenoML training are the following: 
 - `data`: Are the data `continuous`, `discrete`, or `multiclass`?
 - `method`: Do you want to use `supervised` or `unsupervised` machine learning? *(`unsupervised` currently under development)*
-- `mode`:  would you like to `munge`, `harmonize`, `train`, `tune`, or `test` your model? Here, you will use `tune`.
+- `mode`: Would you like to `munge`, `harmonize`, `train`, `tune`, `test`, or `test_harmonize` your model? Here, you will use `tune`.
 - `--prefix` : Where would you like your outputs to be saved?
 
 The most basic command to tune your model looks like the following: 
@@ -478,16 +479,33 @@ genoml discrete supervised tune \
 ## 4. Testing/Validation with GenoML
 Testing/validation with GenoML applies your fully-tuned model on a new dataset to evaluate how well its performance generalizes beyond data it was trained on.
 
-**Required** arguments for GenoML training are the following: 
+**Required** arguments for GenoML testing are the following: 
 - `data`: Are the data `continuous`, `discrete`, or `multiclass`?
 - `method`: Do you want to use `supervised` or `unsupervised` machine learning? *(`unsupervised` currently under development)*
-- `mode`:  would you like to `munge`, `harmonize`, `train`, `tune`, or `test` your model? Here, you will use `test`.
+- `mode`: Would you like to `munge`, `harmonize`, `train`, `tune`, `test`, or `test_harmonize` your model? Here, you will use `test`.
 - `--prefix` : Where would you like your outputs to be saved?
 
 ```shell
 # Running GenoML test
 
 genoml discrete supervised test \
+--prefix outputs
+```
+
+<a id="4b"></a>
+## 4b. Testing/Validating your harmonized data with GenoML
+Testing/validating on GenoML-harmonized data works the same as on Munged data, but uses the `test_harmonize` flag instead to indicate that this will be performed on the data in the `Harmonize` directory instead.
+
+**Required** arguments for GenoML testing are the following: 
+- `data`: Are the data `continuous`, `discrete`, or `multiclass`?
+- `method`: Do you want to use `supervised` or `unsupervised` machine learning? *(`unsupervised` currently under development)*
+- `mode`: Would you like to `munge`, `harmonize`, `train`, `tune`, `test`, or `test_harmonize` your model? Here, you will use `test_harmonize`.
+- `--prefix` : Where would you like your outputs to be saved?
+
+```shell
+# Running GenoML test_harmonize
+
+genoml discrete supervised test_harmonize \
 --prefix outputs
 ```
 

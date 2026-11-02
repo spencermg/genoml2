@@ -37,8 +37,8 @@ def tune(prefix, metric_tune, max_iter, cv_count, random_state):
     tuner.export_prediction_data()
 
 
-def test(prefix):
-    tester = Test(prefix)
+def test(prefix, harmonized):
+    tester = Test(prefix, harmonized)
     tester.plot_results()
     tester.export_prediction_data()
     tester.additional_sumstats()

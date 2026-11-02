@@ -24,14 +24,22 @@ from pathlib import Path
 
 class Test:
     @utils.DescriptionLoader.function_description("info", cmd="Continuous Supervised Testing")
-    def __init__(self, prefix):
+    def __init__(self, prefix, harmonized):
         utils.DescriptionLoader.print(
             "testing/info",
             python_version=sys.version,
             prefix=prefix,
         )
 
-        if Path(prefix).joinpath("Munge").joinpath(f"test_dataset_fold1.h5").exists():
+        if harmonized:
+            self._is_using_outer_cv = False
+            df_test = utils.read_munged_data(Path(prefix).joinpath("Harmonize").joinpath(f"test_dataset.h5"))
+            self._y_test = df_test.PHENO
+            self._ids_test = df_test.ID
+            self._x_test = df_test.drop(columns=["PHENO", "ID"])
+            self._algorithm = joblib.load(Path(prefix).joinpath("model.joblib"))
+            self._algorithm_name = utils.get_algorithm_name(self._algorithm)
+        elif Path(prefix).joinpath("Munge").joinpath(f"test_dataset_fold1.h5").exists():
             self._is_using_outer_cv = True
             self._y_test = []
             self._ids_test = []

@@ -74,7 +74,9 @@ def handle_continuous_supervised():
         {"name": "tune", "handler": handle_continuous_supervised_tune,
          "description": "for supervised tuning of your munged and trained continuous dataset"},
         {"name": "test", "handler": handle_continuous_supervised_test,
-         "description": "for supervised testing of your model generated on continuous data on unseen continuous data (after its been harmonized and munged)"},
+         "description": "for supervised testing of your model generated on continuous data on unseen continuous data (after it's been munged)"},
+        {"name": "test_harmonize", "handler": handle_continuous_supervised_test_harmonize,
+         "description": "for supervised testing of your model generated on continuous data on unseen continuous data (after it's been harmonized)"},
     ]
     handle_dispatcher(entry_points, "genoml continuous supervised", 2)
 
@@ -90,7 +92,9 @@ def handle_discrete_supervised():
         {"name": "tune", "handler": handle_discrete_supervised_tune,
          "description": "for supervised tuning of your munged and trained discrete dataset"},
         {"name": "test", "handler": handle_discrete_supervised_test,
-         "description": "for supervised testing of your model generated on discrete data on unseen discrete data (after its been harmonized and munged)"},
+         "description": "for supervised testing of your model generated on discrete data on unseen discrete data (after it's been munged)"},
+        {"name": "test_harmonize", "handler": handle_discrete_supervised_test_harmonize,
+         "description": "for supervised testing of your model generated on discrete data on unseen discrete data (after it's been harmonized)"},
     ]
     handle_dispatcher(entry_points, "genoml discrete supervised", 2)
 
@@ -106,7 +110,9 @@ def handle_multiclass_supervised():
         {"name": "tune", "handler": handle_multiclass_supervised_tune,
          "description": "for supervised tuning of your munged and trained multiclass dataset"},
         {"name": "test", "handler": handle_multiclass_supervised_test,
-         "description": "for supervised testing of your model generated on multiclass data on unseen multiclass data (after its been harmonized and munged)"},
+         "description": "for supervised testing of your model generated on multiclass data on unseen multiclass data (after it's been munged)"},
+        {"name": "test_harmonize", "handler": handle_multiclass_supervised_test_harmonize,
+         "description": "for supervised testing of your model generated on multiclass data on unseen multiclass data (after it's been harmonized)"},
     ]
     handle_dispatcher(entry_points, "genoml multiclass supervised", 2)
 
@@ -141,7 +147,13 @@ def handle_continuous_supervised_tune():
 def handle_continuous_supervised_test():
     handle_endpoints("genoml continuous supervised test",
                      ["prefix"],
-                     continuous_supervised.test, 3)
+                     functools.partial(continuous_supervised.test, harmonized=False), 3)
+
+
+def handle_continuous_supervised_test_harmonize():
+    handle_endpoints("genoml continuous supervised test_harmonize",
+                     ["prefix"],
+                     functools.partial(continuous_supervised.test, harmonized=True), 3)
 
 
 def handle_discrete_supervised_munge():
@@ -174,7 +186,13 @@ def handle_discrete_supervised_tune():
 def handle_discrete_supervised_test():
     handle_endpoints("genoml discrete supervised test",
                      ["prefix"],
-                     discrete_supervised.test, 3)
+                     functools.partial(discrete_supervised.test, harmonized=False), 3)
+
+
+def handle_discrete_supervised_test_harmonize():
+    handle_endpoints("genoml discrete supervised test_harmonize",
+                     ["prefix"],
+                     functools.partial(discrete_supervised.test, harmonized=True), 3)
 
 
 def handle_multiclass_supervised_munge():
@@ -207,7 +225,13 @@ def handle_multiclass_supervised_tune():
 def handle_multiclass_supervised_test():
     handle_endpoints("genoml multiclass supervised test",
                      ["prefix"],
-                     multiclass_supervised.test, 3)
+                     functools.partial(multiclass_supervised.test, harmonized=False), 3)
+
+
+def handle_multiclass_supervised_test_harmonize():
+    handle_endpoints("genoml multiclass supervised test_harmonize",
+                     ["prefix"],
+                     functools.partial(multiclass_supervised.test, harmonized=True), 3)
 
 
 def handle_dispatcher(entry_points, command_name, level):

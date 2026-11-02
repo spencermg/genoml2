@@ -27,6 +27,7 @@ class Harmonize:
     def __init__(self, prefix, geno_path, pheno_path, addit_path, confounders, force_impute, random_state, data_type):
         # Create subdirectory where all munging-related files will be saved
         self.prefix = utils.create_results_dir(prefix, "Munge")
+        self.harmonize_prefix = utils.create_results_dir(prefix, "Harmonize")
 
         # Load params/models from munging
         self.confounders = confounders
@@ -84,14 +85,21 @@ class Harmonize:
         """ Merge phenotype, genotype, and additional data. """
         self.df_merged_harmonize = preprocessing_utils.read_pheno_file(self.pheno_path, self.data_type)
         self.df_merged_harmonize, _, _ = preprocessing_utils.merge_addit_data(self.df_merged_harmonize, self.addit_path, self.impute_type, normalize_means=self.mean_vals, normalize_stdevs=self.std_vals)
+        print(self.df_merged_harmonize)
+        print(self.df_merged_harmonize.columns[self.df_merged_harmonize.isna().any()])
         self.df_merged_harmonize = preprocessing_utils.merge_geno_harmonize_data(
-            self.df_merged_harmonize, self.geno_path, self.pheno_path, self.impute_type, self.prefix, self.plink_exec)
+            self.df_merged_harmonize, self.geno_path, self.pheno_path, self.impute_type, self.prefix, self.plink_exec
+        )
+        print(self.df_merged_harmonize)
+        print(self.df_merged_harmonize.columns[self.df_merged_harmonize.isna().any()])
 
 
     def filter_shared_cols(self):
         """ Initial filtering to keep only shared columns between train and harmonizing data. """
         common_cols = self.cols.intersection(self.df_merged_harmonize.columns)
         self.df_merged_harmonize = self.df_merged_harmonize[common_cols]
+        print(self.df_merged_harmonize)
+        print(self.df_merged_harmonize.columns[self.df_merged_harmonize.isna().any()])
 
 
     def impute_missing_cols(self):
@@ -158,7 +166,9 @@ class Harmonize:
 
     def save_data(self):
         """ Save harmonized dataset. """
-        outfile_h5 = self.prefix.joinpath("test_dataset.h5")
+        outfile_h5 = self.harmonize_prefix.joinpath("test_dataset.h5")
+        print(self.df_merged_harmonize)
+        print(self.df_merged_harmonize.columns[self.df_merged_harmonize.isna().any()])
         self.df_merged_harmonize.to_hdf(outfile_h5, key='dataForML')
 
         # Thank the user
