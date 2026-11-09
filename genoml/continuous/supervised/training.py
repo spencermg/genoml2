@@ -50,9 +50,9 @@ class Train:
             "Algorithm", 
             "Runtime_Seconds",
             "Explained_Variance",
-            "Mean_Squared_Error",
+            "Root_Mean_Squared_Error",
             "Median_Absolute_Error",
-            "R-Squared_Error",
+            "Pearson_R",
         ]
         self._prefix = Path(prefix).joinpath("Train")
         if not self._prefix.is_dir():

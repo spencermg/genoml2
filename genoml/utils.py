@@ -23,6 +23,7 @@ import sys
 import textwrap
 import time
 import traceback
+from joblib import Parallel, delayed
 from pathlib import Path
 from sklearn import model_selection
 from skopt import BayesSearchCV
@@ -625,7 +626,7 @@ def export_model(out_dir, algorithm, fold=None):
 
 
 @DescriptionLoader.function_description("utils/training/compete")
-def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, column_names, calculate_accuracy_scores):
+def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, column_names, calculate_accuracy_scores, n_jobs=-1):
     """
     Compete algorithms against each other during the training stage and record results.
 
@@ -638,21 +639,35 @@ def fit_algorithms(out_dir, algorithms, x_train, y_train, x_valid, y_valid, colu
         y_valid (pandas.DataFrame): Reported output features for validation.
         column_names (list): Names for each feature, to serve as column headers in resulting data table.
         calculate_accuracy_scores (func): Function for accuracy score calculation for the given module.
+        n_jobs (int, optional): Number of CPUs to parallelize (Default: -1).
     
     :return: log_table: \n
         Results for each trained model.
     """
 
+    algorithm_names = list(algorithms.keys())
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(_fit_algorithm)(
+            algorithms[algorithm_name], algorithm_name, x_train, y_train, x_valid, y_valid, calculate_accuracy_scores
+        )
+        for algorithm_name in algorithm_names
+    )
+
     log_table = []
     trained_algorithms = dict()
 
-    for algorithm_name, algorithm in algorithms.items():
+    for algorithm_name, (algorithm_log, trained_algorithm) in zip(algorithm_names, results):
         with DescriptionLoader.context(
             "utils/training/fit_algorithms/compete/algorithm",
             name=algorithm_name,
         ):
-            trained_algorithms[algorithm_name] = []
-            algorithm_log, trained_algorithm = _fit_algorithm(algorithm, algorithm_name, x_train, y_train, x_valid, y_valid, column_names, calculate_accuracy_scores)
+            results_str = metrics_to_str(dict(zip(column_names, algorithm_log)))
+            DescriptionLoader.print(
+                "utils/training/fit_algorithms/compete/algorithm/results",
+                name=algorithm_name, 
+                results=results_str,
+            )
+            
             log_table.append(algorithm_log)
             trained_algorithms[algorithm_name] = trained_algorithm
 
@@ -911,20 +926,12 @@ def get_tuning_hyperparams(module, random_state):
     return dict_hyperparams
 
 
-def _fit_algorithm(algorithm, algorithm_name, x_train, y_train, x_valid, y_valid, column_names, calculate_accuracy_scores):
+def _fit_algorithm(algorithm, algorithm_name, x_train, y_train, x_valid, y_valid, calculate_accuracy_scores):
     with Timer() as timer:
         algorithm = copy.deepcopy(algorithm)
         algorithm.fit(x_train, y_train)
 
-    row = [algorithm_name, timer.elapsed()] + list(calculate_accuracy_scores(x_valid, y_valid, algorithm))
-
-    results_str = metrics_to_str(dict(zip(column_names, row)))
-    DescriptionLoader.print(
-        "utils/training/fit_algorithms/compete/algorithm/results",
-        name=algorithm_name, 
-        results=results_str,
-    )
-        
+    row = [algorithm_name, timer.elapsed()] + list(calculate_accuracy_scores(x_valid, y_valid, algorithm)) 
     return row, algorithm
 
 
