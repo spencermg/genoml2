@@ -128,9 +128,9 @@ class FeatureSelection:
         # Fit extraTrees model.
         print(f"Using {self.n_est} extraTrees estimators...")
         if self.data_type == "d":
-            clf = ensemble.ExtraTreesClassifier(n_estimators=self.n_est)
+            clf = ensemble.ExtraTreesClassifier(n_estimators=self.n_est, random_state=self._random_state)
         if self.data_type == "c":
-            clf = ensemble.ExtraTreesRegressor(n_estimators=self.n_est)
+            clf = ensemble.ExtraTreesRegressor(n_estimators=self.n_est, random_state=self._random_state)
         clf.fit(self.x, self.y)
         
         # Drop the features below threshold.
