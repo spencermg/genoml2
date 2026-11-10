@@ -24,7 +24,7 @@ from pathlib import Path
 
 class Test:
     @utils.DescriptionLoader.function_description("info", cmd="Continuous Supervised Testing")
-    def __init__(self, prefix, harmonized):
+    def __init__(self, prefix, harmonize_dir, test_dir, harmonized):
         utils.DescriptionLoader.print(
             "testing/info",
             python_version=sys.version,
@@ -33,7 +33,8 @@ class Test:
 
         if harmonized:
             self._is_using_outer_cv = False
-            df_test = utils.read_munged_data(Path(prefix).joinpath("Harmonize").joinpath(f"test_dataset.h5"))
+            harmonize_path = Path(harmonize_dir) if harmonize_dir is not None else Path(prefix).joinpath("Harmonize")
+            df_test = utils.read_munged_data(harmonize_path.joinpath("test_dataset.h5"))
             self._y_test = df_test.PHENO
             self._ids_test = df_test.ID
             self._x_test = df_test.drop(columns=["PHENO", "ID"])
@@ -70,9 +71,8 @@ class Test:
                 f"No munged data found at {prefix}/Munge. Please run the munge step first."
             )
 
-        self._prefix = Path(prefix).joinpath("Test")
-        if not self._prefix.is_dir():
-            self._prefix.mkdir()
+        self._prefix = Path(test_dir) if test_dir is not None else Path(prefix).joinpath("Test")
+        self._prefix.mkdir(parents=True, exist_ok=True)
 
 
     def export_prediction_data(self):

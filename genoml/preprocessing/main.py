@@ -66,10 +66,10 @@ def munge(
 
 
 def harmonize(
-    prefix, geno_harmonize_path, pheno_harmonize_path, addit_harmonize_path, confounders, force_impute, random_state, data_type,
+    prefix, geno_harmonize_path, pheno_harmonize_path, addit_harmonize_path, confounders, force_impute, random_state, harmonize_dir, data_type
 ):
     harmonizer = Harmonize(
-        prefix, geno_harmonize_path, pheno_harmonize_path, addit_harmonize_path, confounders, force_impute, random_state, data_type,
+        prefix, geno_harmonize_path, pheno_harmonize_path, addit_harmonize_path, confounders, force_impute, random_state, harmonize_dir, data_type
     )
     harmonizer.create_merged_datasets()
     harmonizer.filter_shared_cols()

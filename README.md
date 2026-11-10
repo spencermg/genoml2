@@ -41,6 +41,7 @@ OR
 - 19-MAY-2026: We have added outer cross-validation functionality across all modules allowing the user to create an n-fold split of their data upfront to be used turing the tuning and testing steps. We also refined the continuous prediction module, particularly with the output plots, and the multiclass prediction module, which now uses the same models that are used for binary prediction without a OvR wrapper needed. We additionally now include Pearson's Correlation and OLS as filtering steps during munging. As always, we squashed a few bugs along the way. `README` updated to reflect these changes.
 - 16-JUN-2025: Addition of multiclass prediction functionality using the same base models that are used for the discrete module. We have additionally restructured the munging functionality to allow users to process training and testing data all at once to ensure they are munged under the same conditions, as well as including multiple GWAS summary stats files for SNP filtering. We also upgraded from plink1.9 to plink2 for genomic data processing. Finally, we have added a log file in the output directory to facilitate full reproducbility of results. `README` updated to reflect these changes.
 - 8-OCT-2024: Big changes to output file structure, so now output files go in subdirectories named for each step, and prefixes are not required. `README` updated to reflect these changes.
+- 10-NOV-2026: Parallelized several functions across each of the modules, as well as other speedups. Added a `--harmonize_dir` flag to `harmonize`, and `--harmonize_dir` and `--test_dir` flags to `test_harmonize` so multiple datasets can be harmonized and tested in parallel from the same trained model without overwriting outputs. `missing_cols.txt` is now saved to the harmonization directory (`Harmonize/` by default) instead of the `Munge` directory. `test_harmonize` is now also supported for the `discrete` and `multiclass` modules. `README` updated to reflect these changes.
 
 
 ### Table of Contents 
@@ -101,7 +102,7 @@ pip install .
 
 Munging with GenoML will, at minimum, do the following: 
 - Prune your genotypes using PLINK v2 (if `--geno` flag is used)
-- Impute per column using median (default) or mean (if indicated with the `--impute` flag)
+- Impute per column using median (default) or mean (if indicated with the `--impute_type` flag)
 - Z-scaling of features and removing columns with a std dev = 0 
 
 **Required** arguments for GenoML munging are `--prefix` and `--pheno` 
@@ -186,7 +187,7 @@ genoml discrete supervised munge \
 --pheno examples/discrete/training_pheno.csv
 ```
 
-You can choose to impute on `mean` or `median` by modifying the `--impute` flag, like so *(default is median)*:
+You can choose to impute on `mean` or `median` by modifying the `--impute_type` flag, like so *(default is median)*:
 ```shell
 # Running GenoML munging on discrete data using PLINK genotype binary files and a phenotype file and specifying impute
 
@@ -194,7 +195,7 @@ genoml discrete supervised munge \
 --prefix outputs \
 --geno examples/discrete/training \
 --pheno examples/discrete/training_pheno.csv \
---impute mean
+--impute_type mean
 ```
 
 Well, what if you had GWAS summary statistics handy, and would like to just use the same SNPs outlined in that file? You can do so by running the following:
@@ -381,7 +382,7 @@ genoml discrete supervised harmonize \
 --confounders examples/discrete/validation_addit_confounder_example.csv
 ```
 
-Machine learning models require that your datasets include all of the features that were used to train the model. Because of this, we (and we cannot emphasize this enough) STRONGLY recommend that your harmonization dataset include every feature used in the model. However, if for some reason this is not possible and you would like to test a pre-trained model on your data anyways, we provide the option of adding the entire set of missing features to your harmonization dataset. This will take the average value from the training dataset for each feature (as determined from the `--impute` flag used during munging) and use that same value for each of your samples. You may do so using the `--force_impute` flag as follows:
+Machine learning models require that your datasets include all of the features that were used to train the model. Because of this, we (and we cannot emphasize this enough) STRONGLY recommend that your harmonization dataset include every feature used in the model. However, if for some reason this is not possible and you would like to test a pre-trained model on your data anyways, we provide the option of adding the entire set of missing features to your harmonization dataset. This will take the average value from the training dataset for each feature (as determined from the `--impute_type` flag used during munging) and use that same value for each of your samples. You may do so using the `--force_impute` flag as follows:
 ```shell
 # Running GenoML harmonization on discrete data using PLINK genotype binary files and a phenotype file, while imputing any missing columns (ie, if an addit file was used during training and is not present for the harmonization samples).
 
@@ -391,6 +392,18 @@ genoml discrete supervised harmonize \
 --pheno examples/discrete/validation_pheno.csv \
 --force_impute
 ```
+
+By default, harmonized data are saved to `Harmonize/test_dataset.h5` inside your `--prefix` directory. If `--force_impute` adds any missing features, the list of those features and the values used is saved next to it in `Harmonize/missing_cols.txt`. Because every run writes to the same place, harmonizing a second dataset using the same model would overwrite the first. To keep datasets separate, or to harmonize several datasets in parallel, use `--harmonize_dir` to choose where each dataset's outputs are saved:
+```shell
+# Running GenoML harmonization on discrete data, saving the harmonized data to a custom directory
+
+genoml discrete supervised harmonize \
+--prefix outputs \
+--geno examples/discrete/validation \
+--pheno examples/discrete/validation_pheno.csv \
+--harmonize_dir outputs_validation_1/Harmonize
+```
+> *Note:* `--prefix` should still point to the directory containing your trained model. It is only read from, never modified, during harmonization, so any number of harmonization runs can use it simultaneously. `--harmonize_dir` is created if it does not already exist.
 
 <a id="2"></a>
 ## 2. Training with GenoML
@@ -509,6 +522,20 @@ genoml discrete supervised test_harmonize \
 --prefix outputs
 ```
 
+By default, `test_harmonize` reads the harmonized data from `Harmonize/` and writes its results to `Test/` within your `--prefix` directory. If you harmonized with a custom `--harmonize_dir`, use the same flag here so GenoML knows where to find those data. You can also use `--test_dir` to choose where the results are saved, which keeps results separate when testing several datasets from the same model:
+- `--harmonize_dir`: *(optional)* Directory containing the harmonized data to test on *(default is `<prefix>/Harmonize`)*
+- `--test_dir`: *(optional)* Directory where the testing results are saved *(default is `<prefix>/Test`)*
+
+```shell
+# Running GenoML test_harmonize on data harmonized into a custom directory, saving results to a custom directory
+
+genoml discrete supervised test_harmonize \
+--prefix outputs \
+--harmonize_dir outputs_validation_1/Harmonize \
+--test_dir outputs_validation_1/Test
+```
+> *Note:* The `--test_dir` flag is only available for `test_harmonize`.
+
 <a id="5"></a>
 ## 5. Full pipeline example
 
@@ -524,7 +551,7 @@ genoml discrete supervised munge \
 --geno_test examples/discrete/validation \
 --addit_test examples/discrete/validation_addit.csv \
 --r2_cutoff 0.3 \
---impute mean \
+--impute_type mean \
 --vif 10 \
 --vif_iter 1 \
 --gwas examples/discrete/example_GWAS.csv \

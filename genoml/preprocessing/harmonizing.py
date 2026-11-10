@@ -20,14 +20,19 @@ import pickle
 import sys
 from genoml import utils, dependencies
 from genoml.preprocessing import adjuster
+from pathlib import Path
 
 
 class Harmonize:
     @utils.DescriptionLoader.function_description("info", cmd="Harmonizing")
-    def __init__(self, prefix, geno_path, pheno_path, addit_path, confounders, force_impute, random_state, data_type):
-        # Create subdirectory where all munging-related files will be saved
+    def __init__(self, prefix, geno_path, pheno_path, addit_path, confounders, force_impute, random_state, harmonize_dir, data_type):
+        # Create subdirectory where all harmonizing-related files will be saved
         self.prefix = utils.create_results_dir(prefix, "Munge")
-        self.harmonize_prefix = utils.create_results_dir(prefix, "Harmonize")
+        if harmonize_dir is None:
+            self.harmonize_prefix = utils.create_results_dir(prefix, "Harmonize")
+        else:
+            self.harmonize_prefix = Path(harmonize_dir)
+            self.harmonize_prefix.mkdir(parents=True, exist_ok=True)
 
         # Load params/models from munging
         self.confounders = confounders
@@ -51,6 +56,7 @@ class Harmonize:
             "harmonizing/info",
             python_version=sys.version,
             prefix = self.prefix,
+            harmonize_dir = self.harmonize_prefix,
             geno_path = geno_path,
             addit_path = addit_path,
             pheno_path = pheno_path,
@@ -101,14 +107,14 @@ class Harmonize:
         missing_cols = self.cols.difference(self.df_merged_harmonize.columns)
 
         if len(missing_cols) > 0 and not self.force_impute:
-            with open(self.prefix.joinpath("missing_cols.txt"), 'w') as file:
+            with open(self.harmonize_prefix.joinpath("missing_cols.txt"), 'w') as file:
                 for col in missing_cols:
                     file.write(f'{col}\n')
 
             val_err_str = f"{len(missing_cols)} of the {len(self.cols)} features that were used to fit the model which are not present in the dataset you're harmonizing! \n"
             val_err_str += "We STRONGLY recommend using the same features that were used to fit your model. \n"
             val_err_str += "However, if you want to impute these values using the average from the training data, please add the --force_impute flag. \n"
-            val_err_str += f"A list of missing columns has been written to {self.prefix.joinpath('missing_cols.txt')} \n"
+            val_err_str += f"A list of missing columns has been written to {self.harmonize_prefix.joinpath('missing_cols.txt')} \n"
             if len(missing_cols) < 10:
                 val_err_str += "These are:\n - "
                 val_err_str += "\n - ".join(missing_cols)
@@ -120,7 +126,7 @@ class Harmonize:
             raise ValueError(val_err_str)
 
         elif len(missing_cols) > 0 and self.force_impute:
-            with open(self.prefix.joinpath("missing_cols.txt"), 'w') as file:
+            with open(self.harmonize_prefix.joinpath("missing_cols.txt"), 'w') as file:
                 for col in missing_cols:
                     self.df_merged_harmonize[col] = self.impute_vals[col]
                     file.write(f'{col}\t{self.impute_vals[col]}\n')
@@ -129,7 +135,7 @@ class Harmonize:
             print_str = f"{len(missing_cols)} of the {len(self.cols)} features that were used to fit the model which are not present in the dataset you're harmonizing! \n"
             print_str += "You have chosen to impute these values using the average from the training data. \n"
             print_str += "However, in the future we STRONGLY recommend using the same features that were used to fit your model. \n"
-            print_str += f"A list of missing columns and the values used for imputation has been written to {self.prefix.joinpath('missing_cols.txt')} \n"
+            print_str += f"A list of missing columns and the values used for imputation has been written to {self.harmonize_prefix.joinpath('missing_cols.txt')} \n"
             if len(missing_cols) < 10:
                 print_str += "These are:\n - "
                 print_str += "\n - ".join(missing_cols)

@@ -128,7 +128,7 @@ def handle_continuous_supervised_munge():
 
 def handle_continuous_supervised_harmonize():
     handle_endpoints("genoml continuous supervised harmonize",
-                     ["prefix", "geno", "pheno", "addit", "confounders", "force_impute", "random_state"],
+                     ["prefix", "geno", "pheno", "addit", "confounders", "force_impute", "random_state", "harmonize_dir"],
                      functools.partial(preprocessing.harmonize, data_type="c"), 3)
 
 
@@ -152,7 +152,7 @@ def handle_continuous_supervised_test():
 
 def handle_continuous_supervised_test_harmonize():
     handle_endpoints("genoml continuous supervised test_harmonize",
-                     ["prefix"],
+                     ["prefix", "harmonize_dir", "test_dir"],
                      functools.partial(continuous_supervised.test, harmonized=True), 3)
 
 
@@ -167,7 +167,7 @@ def handle_discrete_supervised_munge():
               
 def handle_discrete_supervised_harmonize():       
     handle_endpoints("genoml discrete supervised harmonize",
-                     ["prefix", "geno", "pheno", "addit", "confounders", "force_impute", "random_state"],
+                     ["prefix", "geno", "pheno", "addit", "confounders", "force_impute", "random_state", "harmonize_dir"],
                      functools.partial(preprocessing.harmonize, data_type="d"), 3)
 
 
@@ -191,7 +191,7 @@ def handle_discrete_supervised_test():
 
 def handle_discrete_supervised_test_harmonize():
     handle_endpoints("genoml discrete supervised test_harmonize",
-                     ["prefix"],
+                     ["prefix", "harmonize_dir", "test_dir"],
                      functools.partial(discrete_supervised.test, harmonized=True), 3)
 
 
@@ -206,7 +206,7 @@ def handle_multiclass_supervised_munge():
 
 def handle_multiclass_supervised_harmonize():
     handle_endpoints("genoml multiclass supervised harmonize",
-                     ["prefix", "geno", "pheno", "addit", "confounders", "force_impute", "random_state"],
+                     ["prefix", "geno", "pheno", "addit", "confounders", "force_impute", "random_state", "harmonize_dir"],
                      functools.partial(preprocessing.harmonize, data_type="d"), 3)
 
 
@@ -230,7 +230,7 @@ def handle_multiclass_supervised_test():
 
 def handle_multiclass_supervised_test_harmonize():
     handle_endpoints("genoml multiclass supervised test_harmonize",
-                     ["prefix"],
+                     ["prefix", "harmonize_dir", "test_dir"],
                      functools.partial(multiclass_supervised.test, harmonized=True), 3)
 
 
@@ -580,6 +580,24 @@ def add_default_flag(parser, flag_name):
             type=int, 
             default=3,
             help="Random seed to use for reproducibility", 
+        )
+    
+    elif flag_name == "harmonize_dir":
+        parser.add_argument(
+            '--harmonize_dir', 
+            type=str, 
+            default="",
+            help="Directory where the harmonized dataset is saved (harmonize) or read from (test_harmonize). "
+                 "Lets multiple harmonization runs share one trained model without overwriting each other "
+                 "[default: <prefix>/Harmonize].",
+        )
+
+    elif flag_name == "test_dir":
+        parser.add_argument(
+            '--test_dir', 
+            type=str, 
+            default=None,
+            help="Directory where testing results are saved [default: <prefix>/Test].",
         )
 
     else:
