@@ -16,41 +16,53 @@
 # Import the necessary packages
 from genoml.preprocessing.harmonizing import Harmonize
 from genoml.preprocessing.munging import Munge
+from joblib import Parallel, delayed
+
+
+def munge_dataset(munger, df_train, df_test, fold=None):
+    """ Munge the full dataset (fold=None) or a single cross-validation fold. """
+    munger.df_merged = df_train.copy()
+    munger.df_merged_test = None if df_test is None else df_test.copy()
+
+    # Scale each fold using only its own training samples
+    if fold is not None:
+        munger.normalize_fold()
+
+    munger.filter_shared_cols()
+    munger.apply_adjustments(fold=fold)
+    munger.feature_selection(fold=fold)
+    munger.filter_shared_cols()
+    munger.save_data(fold=fold)
 
 
 def munge(
     prefix, impute_type, geno_path, pheno_path, addit_path, geno_test_path, pheno_test_path, 
     addit_test_path, skip_prune, r2, n_est, gwas_paths, p_gwas, vif_thresh, vif_iter, pearson_threshold, 
-    ols_threshold, umap_reduce, adjust_data, adjust_normalize, target_features, confounders, 
+    assoc_threshold, umap_reduce, adjust_data, adjust_normalize, target_features, confounders, 
     confounders_test, n_outer_cv, random_state, data_type,
 ):
     munger = Munge(
         prefix, impute_type, geno_path, pheno_path, addit_path, geno_test_path, pheno_test_path, 
         addit_test_path, skip_prune, r2, n_est, gwas_paths, p_gwas, vif_thresh, vif_iter, pearson_threshold, 
-        ols_threshold, umap_reduce, adjust_data, adjust_normalize, target_features, confounders, 
+        assoc_threshold, umap_reduce, adjust_data, adjust_normalize, target_features, confounders, 
         confounders_test, n_outer_cv, random_state, data_type,
     )
 
     # Always munge the full dataset
     munger.create_merged_datasets()
-    munger.filter_shared_cols()
-    munger.apply_adjustments()
-    munger.feature_selection()
-    munger.filter_shared_cols()
-    munger.save_data()
+    datasets = [(munger.df_merged, munger.df_merged_test, None)]
 
     # If using cross-validation, also munge each fold separately
     if munger.n_outer_cv > 1:
-        munger.create_merged_datasets(n_outer_cv=munger.n_outer_cv)
-        for fold in range(1, munger.n_outer_cv+1):
-            munger.df_merged = munger.df_merged_cv_dict[fold]["train"]
-            munger.df_merged_test = munger.df_merged_cv_dict[fold]["test"]
-            
-            munger.filter_shared_cols()
-            munger.apply_adjustments(fold=fold)
-            munger.feature_selection(fold=fold)
-            munger.filter_shared_cols()
-            munger.save_data(fold=fold)
+        for fold, df_fold in munger.make_cv_splits(munger.df_merged).items():
+            datasets.append((df_fold["train"], df_fold["test"], fold))
+
+    # Munge the datasets in parallel (each one is independent of the others)
+    munger.df_merged, munger.df_merged_test, munger.df_merged_cv_dict = None, None, None
+    Parallel(n_jobs=-1)(
+        delayed(munge_dataset)(munger, df_train, df_test, fold)
+        for df_train, df_test, fold in datasets
+    )
 
 
 def harmonize(

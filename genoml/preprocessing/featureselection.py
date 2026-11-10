@@ -18,13 +18,15 @@ import numpy as np
 import pandas as pd
 import re
 import statsmodels.formula.api as smf
+from scipy import stats
 from sklearn import ensemble, feature_selection
+from sklearn.feature_selection import f_regression
 from statsmodels.stats import outliers_influence
 from tqdm import tqdm
 
 
 class FeatureSelection:
-    def __init__(self, prefix, df, data_type, n_est, vif_iter, vif_threshold, chunk_size, pearson_threshold, ols_threshold, random_state, fold=None):
+    def __init__(self, prefix, df, data_type, n_est, vif_iter, vif_threshold, chunk_size, pearson_threshold, assoc_threshold, random_state, fold=None):
         df.dropna(axis=1, inplace=True)
         self.prefix = prefix
         self.n_est = n_est
@@ -37,7 +39,7 @@ class FeatureSelection:
         self.vif_threshold = vif_threshold
         self.chunk_size = chunk_size
         self._pearson_threshold = pearson_threshold
-        self._ols_threshold = ols_threshold
+        self._assoc_threshold = assoc_threshold
         self._random_state = random_state
         self.fold = fold
 
@@ -49,77 +51,77 @@ class FeatureSelection:
         if self.vif_iter > 0:
             self.vif()
         
-        # OLS before Pearson Correlation for computational efficiency
-        if self._ols_threshold > 0:
-            self.ols_association()
+        # F-regression before Pearson Correlation for computational efficiency
+        if self._assoc_threshold > 0:
+            self.association_filtering()
         if self._pearson_threshold > 0:
             self.pearson_correlation()
         return self.df
 
+
     def pearson_correlation(self):
+        # Keep only numeric features in the data
         df_features = self.df.copy().drop(columns=["ID", "PHENO"])
         numeric_features = df_features.select_dtypes(include=[np.number])
 
-        arr = numeric_features.values.T.astype(np.float32)
-        n = arr.shape[1]
+        # Row-major for efficiency
+        arr = np.ascontiguousarray(numeric_features.values.T.astype(np.float32))
+
+        # Initialize array keeping track of features being kept, accumulating after each block
+        kept = np.empty_like(arr)
+
+        # Loop through each block
+        p, n = arr.shape
         cols = numeric_features.columns.tolist()
-        kept_idx = [0]
-        kept_arr = arr[[0]]
+        kept_idx, k, block = [], 0, 256
+        for start in range(0, p, block):
+            blk = arr[start:start + block]
 
-        for i in range(1, len(cols)):
-            if np.abs((kept_arr @ arr[i]) / n).max() < self._pearson_threshold:
-                kept_idx.append(i)
-                kept_arr = np.vstack([kept_arr, arr[i]])
+            # Drop features correlated with any kept from previous blocks
+            if k > 0:
+                ok = (np.abs(kept[:k] @ blk.T) / n).max(axis=0) < self._pearson_threshold
+            else:
+                ok = np.ones(len(blk), dtype=bool)
+            k0 = k
 
+            # Greedy within the block to decide what to append going forward
+            for j in np.flatnonzero(ok):
+                v = blk[j]
+                if k > k0 and (np.abs(kept[k0:k] @ v) / n).max() >= self._pearson_threshold:
+                    continue
+                kept[k] = v
+                kept_idx.append(start + j)
+                k += 1
+
+        # Keep only the non-correlated features, along with ID and PHENO columns
         correlation_filtered_features = [cols[i] for i in kept_idx]
         self.df = self.df[["ID", "PHENO"] + correlation_filtered_features]
         print(f"{len(correlation_filtered_features)} features remaining after Pearson's correlation filtering with a threshold of {self._pearson_threshold}")
 
-    def ols_association(self):
-        regression_results = []
-        feature_columns = self.df.drop(columns=["ID", "PHENO"]).columns.values
-        for feature in tqdm(feature_columns, total=len(feature_columns), desc="Running independent regressions", miniters=len(feature_columns) // 100):
-            safe_feature_name = re.sub(r'[^0-9a-zA-Z_]', '_', feature)
-            
-            df_regression = self.df[["PHENO", feature]].copy()
-            df_regression = df_regression.rename(columns={feature: safe_feature_name})
 
-            formula = f"PHENO ~ {safe_feature_name}"
-            model = smf.ols(formula, data=df_regression).fit()
+    def association_filtering(self):
+        # Perform f-regression on each feature
+        feature_columns = self.df.drop(columns=["ID", "PHENO"]).columns
+        f_statistic, p_value = f_regression(self.df[feature_columns].values, self.df["PHENO"].values)
 
-            conf_int = model.conf_int().loc[safe_feature_name]
-            regression_results.append({
-                "Feature": feature,
-                "Coefficient": model.params[safe_feature_name],
-                "StdErr": model.bse[safe_feature_name],
-                "TValue": model.tvalues[safe_feature_name],
-                "pval": model.pvalues[safe_feature_name],
-                "CI_L95": conf_int[0],
-                "CI_U95": conf_int[1],
-                "R2": model.rsquared,
-                "Adj_R2": model.rsquared_adj,
-                "AIC": model.aic,
-                "BIC": model.bic,
-                "F_statistic": model.fvalue,
-                "F_pvalue": model.f_pvalue,
-                "n_obs": int(model.nobs),
-            })
-        
-        # Sort features by p-value
-        df_regression_results = pd.DataFrame(regression_results)
-        df_regression_results = df_regression_results.sort_values(by="pval")
+        # Compile results into data table
+        df_regression_results = pd.DataFrame({
+            "Feature": feature_columns,
+            "F_statistic": f_statistic,
+            "pval": p_value,
+        }).sort_values(by="pval")
 
         # Find features that meet the user-defined threshold
-        features_to_include = df_regression_results.loc[df_regression_results["pval"] < self._ols_threshold, "Feature"].tolist()
-        print(f"{len(features_to_include)} out of {len(df_regression_results)} features achieved an OLS p-value below {self._ols_threshold} and will be included")
+        features_to_include = df_regression_results.loc[df_regression_results["pval"] < self._assoc_threshold, "Feature"].tolist()
+        print(f"{len(features_to_include)} out of {len(df_regression_results)} features achieved a regression p-value below {self._assoc_threshold} and will be included")
 
         # Filter data to keep significant features in order of importance
         self.df = self.df[["ID", "PHENO"] + features_to_include]
 
         # Save regression summary
-        ols_regression_summary_path = f"ols_regression{f'_fold{self.fold}' if self.fold is not None else ''}.tsv"
+        regression_summary_path = f"regression_filtering{f'_fold{self.fold}' if self.fold is not None else ''}.tsv"
         df_regression_results.to_csv(
-            self.prefix.joinpath(ols_regression_summary_path), 
+            self.prefix.joinpath(regression_summary_path), 
             sep="\t",
             index=False,
         )
@@ -128,9 +130,9 @@ class FeatureSelection:
         # Fit extraTrees model.
         print(f"Using {self.n_est} extraTrees estimators...")
         if self.data_type == "d":
-            clf = ensemble.ExtraTreesClassifier(n_estimators=self.n_est, random_state=self._random_state)
+            clf = ensemble.ExtraTreesClassifier(n_estimators=self.n_est, n_jobs=-1, random_state=self._random_state)
         if self.data_type == "c":
-            clf = ensemble.ExtraTreesRegressor(n_estimators=self.n_est, random_state=self._random_state)
+            clf = ensemble.ExtraTreesRegressor(n_estimators=self.n_est, n_jobs=-1, random_state=self._random_state)
         clf.fit(self.x, self.y)
         
         # Drop the features below threshold.

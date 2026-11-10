@@ -259,7 +259,7 @@ genoml discrete supervised munge \
 ```
 The `--n_trees` flag uses extraTrees ([classifier](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesClassifier.html) for discrete data; [regressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesRegressor.html) for continuous data) to output an `*.approx_feature_importance.txt` file with the features most contributing to your model at the top. 
 
-If you would like to use a linear regression-based method, you can use the `--ols_threshold` flag to specify the p-value for the relationship between each individual feature and the dependent variable, above which features will be dropped, as such:
+If you would like to use a linear regression-based method, you can use the `--assoc_threshold` flag to specify the p-value for the relationship between each individual feature and the dependent variable, above which features will be dropped, as such:
 ```shell
 # Running GenoML munging on discrete data using PLINK genotype binary files, a phenotype file, and running OLS for feature selection 
 
@@ -268,7 +268,7 @@ genoml discrete supervised munge \
 --geno examples/discrete/training \
 --pheno examples/discrete/training_pheno.csv \
 --addit examples/discrete/training_addit.csv \
---ols_threshold 0.05
+--assoc_threshold 0.05
 ```
 
 If you suspect collinear variables, and think this will be a problem for training the model moving forward, you have two options. One option is to use [variance inflation factor](https://www.investopedia.com/terms/v/variance-inflation-factor.asp) (VIF) filtering, using the `--vif` flag to specify the VIF threshold you would like to use (5 is recommended) and the `--vif_iter` flag to specify the number of iterations you'd like to run (if you have or anticipate many collinear variables, it's a good idea to increase the iterations): 

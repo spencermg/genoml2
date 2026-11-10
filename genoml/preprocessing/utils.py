@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import subprocess
 import sys
+from genoml import utils
 from pathlib import Path
 
 
@@ -51,13 +52,13 @@ def gwas_filter(prefix, gwas_paths, p_gwas):
         snps_to_keep = []
         outfile = prefix.joinpath("p_threshold_variants.tab")
         for gwas_path in gwas_paths:
-            gwas_df = pd.read_csv(gwas_path, sep=None, engine="python")
-            if "SNP" in gwas_df.columns.values[0]:
-                gwas_df.rename({gwas_df.columns.values[0]:"SNP"}, axis=1, inplace=True)
-            if "p" in gwas_df.columns.values[0]:
-                gwas_df.rename({gwas_df.columns.values[0]:"p"}, axis=1, inplace=True)
-            gwas_df_reduced = gwas_df[['SNP', 'p']]
-            snps_to_keep.append(gwas_df_reduced.loc[(gwas_df_reduced['p'] <= p_gwas)])
+            df_gwas = utils.read_table(gwas_path)
+            if "SNP" in df_gwas.columns.values[0]:
+                df_gwas.rename({df_gwas.columns.values[0]:"SNP"}, axis=1, inplace=True)
+            if "p" in df_gwas.columns.values[0]:
+                df_gwas.rename({df_gwas.columns.values[0]:"p"}, axis=1, inplace=True)
+            df_gwas_reduced = df_gwas[['SNP', 'p']]
+            snps_to_keep.append(df_gwas_reduced.loc[(df_gwas_reduced['p'] <= p_gwas)])
         snps_to_keep = pd.concat(snps_to_keep)
         snps_to_keep.sort_values('p', inplace=True)
         snps_to_keep.drop_duplicates(subset=['SNP'], inplace=True)
@@ -68,7 +69,7 @@ def gwas_filter(prefix, gwas_paths, p_gwas):
 
 
 def read_pheno_file(pheno_path, data_type):
-    df_pheno = pd.read_csv(pheno_path, engine="python", sep=None, encoding="utf-8-sig")
+    df_pheno = utils.read_table(pheno_path)
     try:
         if not {"ID", "PHENO"}.issubset(df_pheno.columns):
             raise ValueError("Error: It doesn't look as though your phenotype file is properly formatted. Did you check"
@@ -113,7 +114,7 @@ def impute_df(df, impute_type, feature_type="genotype"):
     print(f"You have just imputed your {feature_type} features, covering up NAs with the column {impute_type} so that analyses don't crash due to missing data.")
     print(f"Now your {feature_type} features might look a little better (showing the first few lines of the left-most and right-most columns)...")
     print("#" * 70)
-    print(df.describe())
+    print(df.iloc[:, :6].describe())
     print("#" * 70)
     print("")
 
@@ -122,49 +123,37 @@ def impute_df(df, impute_type, feature_type="genotype"):
 
 def normalize_cols(df):
     # Remove the ID column
-    cols = list(df.columns)
-    cols.remove("ID")
+    cols = [c for c in df.columns if c != "ID"]
     df_numeric = df[cols]
 
     # Remove any columns with a standard deviation of zero
     print(f"Now Z-scaling your non-genotype features...")
     print(f"Removing any columns that have a standard deviation of 0 prior to Z-scaling...")
-
-    if any(df[cols].std() == 0.0):
+    
+    stdevs = df_numeric.std()
+    zero_sd = stdevs.index[stdevs == 0.0]
+    if len(zero_sd) > 0:
         print("")
         print(f"Looks like there's at least one column with a standard deviation of 0. Let's remove that for you...")
+        print(f"Removing {len(zero_sd)} columns with a standard deviation of 0 prior to Z-scaling...")
         print("")
-        addit_keep = df_numeric.drop(df_numeric.std()[df_numeric.std() == 0.0].index.values, axis=1)
-        addit_keep_list = list(addit_keep.columns.values)
-        df_numeric = df_numeric[addit_keep_list]
-        removed_list = np.setdiff1d(cols, addit_keep_list)
-        for removed_column in range(len(removed_list)):
-            print(f"The column {removed_list[removed_column]} was removed")
-        cols = addit_keep_list
+        cols = [c for c in cols if c not in set(zero_sd)]
+        df_numeric = df_numeric[cols]
 
-    normalize_means = dict()
-    normalize_stdevs = dict()
-    for col in cols:
-        if (df[col].min() == 0.0) and (df[col].max() == 1.0):
-            print(f"{col} is likely a binary indicator or a proportion and will not be scaled, just + 1 all the values of this variable and rerun to flag this column to be scaled.")
-            normalize_means[col] = 0
-            normalize_stdevs[col] = 1
-        else:
-            normalize_mean = df[col].mean()
-            normalize_stdev = df[col].std(ddof=0)
-            df[col] = (df[col] - normalize_mean) / normalize_stdev
-            normalize_means[col] = normalize_mean
-            normalize_stdevs[col] = normalize_stdev
-    normalize_means = pd.Series(normalize_means)
-    normalize_stdevs = pd.Series(normalize_stdevs)
+    normalize_means = df_numeric.mean()
+    normalize_stdevs = df_numeric.std(ddof=0)
+    flag = (df_numeric.min() == 0.0) & (df_numeric.max() == 1.0)
+    normalize_means[flag] = 0
+    normalize_stdevs[flag] = 1
 
+    normalized = (df_numeric - normalize_means) / normalize_stdevs
+    df = pd.concat([df[["ID"]], normalized], axis=1)
     print("")
     print("You have just Z-scaled your non-genotype features, putting everything on a numeric scale similar to genotypes.")
     print("Now your non-genotype features might look a little closer to zero (showing the first few lines of the left-most and right-most columns)...")
     print("#" * 70)
-    print(df.describe())
+    print(df.iloc[:, :6].describe())
     print("#" * 70)
-
     return df, normalize_means, normalize_stdevs
 
 
@@ -292,7 +281,7 @@ def merge_addit_data(df_merged, addit_path, impute_type, normalize_means=None, n
     # Process non-genotype data if provided by the user
     if addit_path is not None:
         print("Processing non-genotype data")
-        df_addit = pd.read_csv(addit_path, engine="python", sep=None, encoding="utf-8-sig")
+        df_addit = utils.read_table(addit_path)
         df_addit["ID"] = df_addit["ID"].astype(str)
         df_addit = impute_df(df_addit, impute_type, feature_type="non-genotype")
         if normalize_means is not None and normalize_stdevs is not None:

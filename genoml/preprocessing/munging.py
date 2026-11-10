@@ -30,7 +30,7 @@ class Munge:
     def __init__(
         self, prefix, impute_type, geno_path, pheno_path, addit_path, geno_test_path, pheno_test_path, 
         addit_test_path, skip_prune, r2, n_trees, gwas_paths, p_gwas, vif_thresh, vif_iter, pearson_threshold, 
-        ols_threshold, umap_reduce, adjust_data, adjust_normalize, target_features, confounders, 
+        assoc_threshold, umap_reduce, adjust_data, adjust_normalize, target_features, confounders, 
         confounders_test, n_outer_cv, random_state, data_type,
     ):
         self.start = time()
@@ -51,7 +51,7 @@ class Munge:
             vif_thresh = vif_thresh, 
             vif_iter = vif_iter, 
             pearson_threshold = pearson_threshold,
-            ols_threshold = ols_threshold,
+            assoc_threshold = assoc_threshold,
             impute_type = impute_type, 
             umap_reduce = umap_reduce,
             n_outer_cv = n_outer_cv,
@@ -78,7 +78,7 @@ class Munge:
         self.vif_iter = vif_iter
         self.vif_thresh = vif_thresh
         self._pearson_threshold = pearson_threshold
-        self._ols_threshold = ols_threshold
+        self._assoc_threshold = assoc_threshold
         self.umap_reduce = umap_reduce
         self.adjust_data = adjust_data
         self.adjust_normalize = adjust_normalize
@@ -114,33 +114,60 @@ class Munge:
             self.df_merged_test = preprocessing_utils.merge_geno_data(
                 self.df_merged_test, self.geno_test_path, self.pheno_test_path, self.impute_type, self.prefix, self.gwas_paths, self.p_gwas, self.skip_prune, self.plink_exec, self.r2,
             )
-        
-        if n_outer_cv is not None:
-            skf = StratifiedKFold(
-                n_splits=self.n_outer_cv,
-                shuffle=True,
-                random_state=self._random_state,
+
+
+    def make_cv_splits(self, df):
+        """ Split an already merged dataset into stratified outer cross-validation folds. """
+        skf = StratifiedKFold(
+            n_splits=self.n_outer_cv,
+            shuffle=True,
+            random_state=self._random_state,
+        )
+        if self.data_type == "c":
+            df = df.copy()
+            df["PHENO_bin"] = pd.qcut(
+                df["PHENO"],
+                q = max(2, min(10, len(df) // self.n_outer_cv)),
+                labels=False,
+                duplicates="drop",
             )
-            self.df_merged_cv_dict = {}
-            if self.data_type == "c":
-                self.df_merged["PHENO_bin"] = pd.qcut(
-                    self.df_merged["PHENO"],
-                    q = max(2, min(10, len(self.df_merged) // self.n_outer_cv)),
-                    labels=False,
-                    duplicates="drop",
-                )
-                self.df_merged = self.df_merged.dropna(subset=["PHENO_bin"])
-                for fold, (train_idx, test_idx) in enumerate(skf.split(self.df_merged, self.df_merged["PHENO_bin"])):
-                    self.df_merged_cv_dict[fold+1] = {
-                        "train": self.df_merged.iloc[train_idx].drop(columns="PHENO_bin"),
-                        "test": self.df_merged.iloc[test_idx].drop(columns="PHENO_bin"),
-                    }
-            else:
-                for fold, (train_idx, test_idx) in enumerate(skf.split(self.df_merged, self.df_merged["PHENO"])):
-                    self.df_merged_cv_dict[fold+1] = {
-                        "train": self.df_merged.iloc[train_idx],
-                        "test": self.df_merged.iloc[test_idx],
-                    }
+            df = df.dropna(subset=["PHENO_bin"])
+            strata = df["PHENO_bin"]
+            df = df.drop(columns="PHENO_bin")
+        else:
+            strata = df["PHENO"]
+
+        df_merged_cv_dict = {}
+        for fold, (train_idx, test_idx) in enumerate(skf.split(df, strata)):
+            df_merged_cv_dict[fold+1] = {
+                "train": df.iloc[train_idx],
+                "test": df.iloc[test_idx],
+            }
+        return df_merged_cv_dict
+
+
+    def normalize_fold(self):
+        """ Re-scale each individual fold. """
+        addit_means = self._addit_means if self._addit_means is not None else pd.Series(dtype=float)
+        addit_stdevs = self._addit_stdevs if self._addit_stdevs is not None else pd.Series(dtype=float)
+        feature_cols = [col for col in addit_means.index if col in self.df_merged.columns]
+
+        train_means = self.df_merged[feature_cols].mean()
+        train_stdevs = self.df_merged[feature_cols].std(ddof=0).replace(0.0, 1.0)
+
+        # Leave binary/proportion columns unscaled, as in the full-dataset normalization
+        unscaled = (addit_means[feature_cols] == 0) & (addit_stdevs[feature_cols] == 1)
+        train_means[unscaled] = 0
+        train_stdevs[unscaled] = 1
+
+        self.df_merged[feature_cols] = (self.df_merged[feature_cols] - train_means) / train_stdevs
+        if self.df_merged_test is not None:
+            self.df_merged_test[feature_cols] = (self.df_merged_test[feature_cols] - train_means) / train_stdevs
+
+        # Express this fold's scaling parameters on the original scale for the saved harmonization parameters
+        if self._addit_means is not None:
+            self._addit_means = addit_means[feature_cols] + addit_stdevs[feature_cols] * train_means
+            self._addit_stdevs = addit_stdevs[feature_cols] * train_stdevs
 
 
     def filter_shared_cols(self):
@@ -193,7 +220,7 @@ class Munge:
             self.vif_thresh, 
             100,
             self._pearson_threshold, 
-            self._ols_threshold, 
+            self._assoc_threshold, 
             self._random_state,
             fold=fold,
         )

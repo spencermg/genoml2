@@ -597,7 +597,7 @@ def read_munged_data(file_path):
 
     DescriptionLoader.print(
         "data_summary", 
-        data=df.describe(),
+        data=df.iloc[:, :6].describe(),
     )
 
     return df
@@ -949,3 +949,24 @@ def train_valid_split(df, train_split, random_state):
     )
 
     return x_train, x_valid, y_train, y_valid
+
+
+def read_table(path, sep=None, n_lines=5):
+    """ Read a delimited table with the fast C parser, detecting the delimiter from the first few lines unless one is given. """
+    if sep is None:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            lines = [line.rstrip("\r\n") for line in (f.readline() for _ in range(n_lines)) if line.strip()]
+        for candidate in ["\t", ",", ";"]:
+            counts = {line.count(candidate) for line in lines}
+            if len(counts) == 1 and counts.pop() > 0:
+                sep = candidate
+                break
+        else:
+            # Whitespace-delimited: compare the number of fields per line, since padding may vary
+            n_fields = {len(line.split()) for line in lines}
+            if len(n_fields) == 1 and n_fields.pop() > 1:
+                sep = r"\s+"
+            else:
+                raise ValueError(f"Could not determine the delimiter of {path}. Every row should have the same number of fields, or pass sep explicitly.")
+    return pd.read_csv(path, sep=sep, encoding="utf-8-sig")
+    

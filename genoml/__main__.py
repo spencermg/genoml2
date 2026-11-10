@@ -121,7 +121,7 @@ def handle_continuous_supervised_munge():
     handle_endpoints("genoml continuous supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
                       "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "pearson_threshold", 
-                      "ols_threshold", "umap_reduce", "adjust_data", "adjust_normalize", "target_features", 
+                      "assoc_threshold", "umap_reduce", "adjust_data", "adjust_normalize", "target_features", 
                       "confounders", "confounders_test", "n_outer_cv", "random_state"],
                       functools.partial(preprocessing.munge, data_type="c"), 3)
 
@@ -160,7 +160,7 @@ def handle_discrete_supervised_munge():
     handle_endpoints("genoml discrete supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
                       "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "pearson_threshold", 
-                      "ols_threshold", "umap_reduce", "adjust_data", "adjust_normalize", "target_features", 
+                      "assoc_threshold", "umap_reduce", "adjust_data", "adjust_normalize", "target_features", 
                       "confounders", "confounders_test", "n_outer_cv", "random_state"],
                       functools.partial(preprocessing.munge, data_type="d"), 3)
 
@@ -199,7 +199,7 @@ def handle_multiclass_supervised_munge():
     handle_endpoints("genoml multiclass supervised munge",
                      ["prefix", "impute_type", "geno", "pheno", "addit", "geno_test", "pheno_test", "addit_test",
                       "skip_prune", "r2_cutoff", "n_trees", "gwas", "p", "vif", "vif_iter", "pearson_threshold", 
-                      "ols_threshold", "umap_reduce", "adjust_data", "adjust_normalize", "target_features", 
+                      "assoc_threshold", "umap_reduce", "adjust_data", "adjust_normalize", "target_features", 
                       "confounders", "confounders_test", "n_outer_cv", "random_state"],
                       functools.partial(preprocessing.munge, data_type="d"), 3)
 
@@ -488,12 +488,12 @@ def add_default_flag(parser, flag_name):
             help="Threshold to use for Pearson correlation filtering (0-1). [default: 0].",
         )
 
-    elif flag_name == "ols_threshold":
+    elif flag_name == "assoc_threshold":
         parser.add_argument(
-            "--ols_threshold", 
+            "--assoc_threshold", 
             type=float, 
             default=0,
-            help="p-value threshold to use for OLS filtering. [default: 0].",
+            help="p-value threshold to use for F-regression filtering. [default: 0].",
         )
 
     elif flag_name == "impute_type":

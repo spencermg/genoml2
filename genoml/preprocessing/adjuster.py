@@ -19,6 +19,7 @@ import pandas as pd
 import pickle
 import statsmodels.formula.api as smf
 import umap.umap_ as umap
+from genoml import utils
 from joblib import dump
 
 
@@ -31,7 +32,7 @@ class Adjuster:
         self.df_merged = df_merged
         self._random_state = random_state
 
-        self.df_confounders = pd.read_csv(self.confounders, engine="python", sep=None, encoding="utf-8-sig")
+        self.df_confounders = utils.read_table(self.confounders)
         self.df_confounders["ID"] = self.df_confounders["ID"].astype(str)
         self.df_confounders = self.df_confounders.merge(self.df_merged[["ID"]], on="ID")
         self.df_confounders = self.df_confounders.fillna(
